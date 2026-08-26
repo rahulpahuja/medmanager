@@ -2,6 +2,13 @@
   command = "node scripts/build-config.js"
   publish = "."
 
+# Firebase's web SDK config is meant to be public in client-side code — it's
+# not a secret, access control comes from Auth + database.rules.json — so it
+# intentionally appears in app.js (FB_URL) and .firebaserc (project id) too.
+# Without this, Netlify's secrets scanner fails the build on that overlap.
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "FIREBASE_API_KEY,FIREBASE_AUTH_DOMAIN,FIREBASE_DATABASE_URL,FIREBASE_PROJECT_ID,FIREBASE_STORAGE_BUCKET,FIREBASE_MESSAGING_SENDER_ID,FIREBASE_APP_ID"
+
 [[headers]]
   for = "/admin/*"
   [headers.values]
