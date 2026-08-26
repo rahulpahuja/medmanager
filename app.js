@@ -29,7 +29,18 @@ const store={
     return ok;
   }
 };
-const CFG={min:1,on:true,asked:false,name:''};
+const CFG={min:1,on:true,asked:false,name:'',theme:''};
+function applyTheme(){
+  if(CFG.theme)document.documentElement.setAttribute('data-theme',CFG.theme);
+  else document.documentElement.removeAttribute('data-theme');
+}
+$('themeToggle').onclick=async()=>{
+  const sysDark=matchMedia('(prefers-color-scheme: dark)').matches;
+  const current=CFG.theme||(sysDark?'dark':'light');
+  CFG.theme=current==='dark'?'light':'dark';
+  applyTheme();
+  await saveCfg();
+};
 /* ---------- software key and single-device claim ---------- */
 const LOCKMIN=10;
 const LIC={hash:'',devId:'',devName:'',key:''};
@@ -111,7 +122,7 @@ function fbStart(){
     const g=await fbGuard();
     if(!g.ok){showLock(g);return}
     fbClaim();
-  },3*60000);
+  },30000);
 }
 
 /* ---------- the data file: pick it once, then write to it silently ---------- */
@@ -244,7 +255,7 @@ function licPaint(){
   $('licDev').value=LIC.devName||'';
   $('licStat').innerHTML='<span><span class="dot'+(locked?' warn':'')+'"></span>'+
     (LIC.hash?'Activated on '+esc(LIC.devName||'this device'):'No key set')+'</span>'+
-    (LIC.hash?'<span>Checked against the licence server every few minutes</span>':'')+
+    (LIC.hash?'<span>Checked against the licence server every 30 seconds</span>':'')+
     (fh?'<span>Holding '+esc(CFG.name)+'</span>':'')+(locked?'<span class="due">Locked by another device</span>':'');
   if(LIC.hash&&LICINFO&&LICINFO.label){
     const st=LICINFO.active===false?['Revoked','due']:(LICINFO.expiresAt&&Date.now()>+LICINFO.expiresAt?['Expired','due']:['Active','paid']);
@@ -433,6 +444,7 @@ window.addEventListener('pagehide',()=>{if(fh&&dirty)fsWrite()});
 
 async function load(){
   const c=await store.get('btscfg');if(c)try{Object.assign(CFG,JSON.parse(c))}catch(e){}
+  applyTheme();
   const lc=await store.get('btslic');if(lc)try{Object.assign(LIC,JSON.parse(lc))}catch(e){}
   if(!LIC.devId){LIC.devId=newDevId();await saveLic()}
   const raw=await store.get('bts');

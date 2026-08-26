@@ -21,6 +21,10 @@
 <header>
   <h1>Bill Tracking System</h1>
   <div class="sub" id="saveState">&mdash;</div>
+  <button class="theme-toggle noprint" id="themeToggle" title="Switch theme" aria-label="Switch between light and dark theme">
+    <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+    <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
 </header>
 <main>
   <div id="printHead"><h2 id="phTitle"></h2><p id="phSub"></p></div>
@@ -302,7 +306,7 @@
         <button class="ghost" id="licChange">Change key</button>
         <button class="ghost warn" id="licRelease">Release this device</button>
       </div>
-      <div class="hint">The key must be a software key issued by your administrator; it is checked against the licence server on activation and every few minutes after, so a revoked or expired key signs this device out on its own. Only one device may hold that key at a time &mdash; this one keeps its claim alive automatically, and the claim lapses after 10 minutes of silence so another device can pick it up. Release it yourself when you are done for the day.</div>
+      <div class="hint">The key must be a software key issued by your administrator; it is checked against the licence server on activation and every 30 seconds after, so a revoked or expired key signs this device out on its own within moments. Only one device may hold that key at a time &mdash; this one keeps its claim alive automatically, and the claim lapses after 10 minutes of silence so another device can pick it up. Release it yourself when you are done for the day.</div>
     </div>
 
     <div class="card">
