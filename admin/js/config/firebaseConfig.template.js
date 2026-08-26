@@ -1,8 +1,9 @@
 // Template for firebaseConfig.js — do not import this file directly.
-// scripts/build-config.js reads .env and writes the real firebaseConfig.js
-// next to this file (gitignored, since it's a generated build artifact).
-// Run `node scripts/build-config.js` after changing .env, and it also runs
-// automatically before `firebase deploy` via firebase.json's predeploy hook.
+// scripts/build-config.js writes the real firebaseConfig.js next to this
+// file (gitignored, since it's a generated build artifact), from real
+// env vars (Netlify's build) or a local .env. Netlify runs it automatically
+// before every deploy via netlify.toml's build command; run it manually
+// (`node scripts/build-config.js`) after changing .env for local testing.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
 import { getAuth } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
 import { getDatabase } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-database.js';

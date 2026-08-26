@@ -1,0 +1,9 @@
+[build]
+  command = "node scripts/build-config.js"
+  publish = "."
+
+[[headers]]
+  for = "/admin/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"

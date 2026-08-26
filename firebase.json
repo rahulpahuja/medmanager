@@ -1,23 +1,5 @@
 {
   "database": {
     "rules": "database.rules.json"
-  },
-  "hosting": {
-    "public": "public",
-    "predeploy": ["node scripts/build-config.js"],
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [
-      { "source": "/admin", "destination": "/admin/index.html" },
-      { "source": "/admin/**", "destination": "/admin/index.html" }
-    ],
-    "headers": [
-      {
-        "source": "/admin/**",
-        "headers": [
-          { "key": "X-Frame-Options", "value": "DENY" },
-          { "key": "X-Content-Type-Options", "value": "nosniff" }
-        ]
-      }
-    ]
   }
 }
