@@ -73,6 +73,16 @@ tr.hl{background:#fdf6e3}
 .chk input{min-width:0;width:16px;height:16px}
 .bar2{padding:8px 12px;font-size:12px;color:var(--ink2);border-top:1px dashed var(--line)}
 .ok{color:var(--paid);font-weight:600}
+.ovl{position:fixed;inset:0;background:rgba(21,36,32,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+.ovl .box{background:var(--card);border-radius:4px;max-width:560px;width:100%;padding:22px;border:1px solid var(--line);max-height:90vh;overflow:auto}
+.ovl h3{margin:0 0 6px;font-size:17px}
+.ovl p{margin:0 0 14px;font-size:14px;color:var(--ink2);line-height:1.5}
+.ovl .row{gap:8px}
+.ovl button{margin-top:4px}
+.stat{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font-size:13px;color:var(--ink2);margin-bottom:12px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--paid);display:inline-block;margin-right:6px}
+.dot.off{background:#b9c2bd}.dot.warn{background:var(--due)}
+header .sub{cursor:default}
 #printHead{display:none}
 @media print{
   body{background:#fff}
@@ -98,9 +108,8 @@ tr.hl{background:#fdf6e3}
   <div id="printHead"><h2 id="phTitle"></h2><p id="phSub"></p></div>
   <div class="tabs">
     <button data-t="ledger" class="on">Ledger</button>
-    <button data-t="bills">Bills</button>
-    <button data-t="deposits">Deposits</button>
-    <button data-t="parties">Parties</button>
+    <button data-t="parties">Medicals</button>
+    <button data-t="items">Items</button>
     <button data-t="doctors">Doctors</button>
     <button data-t="rx">Prescriptions</button>
     <button data-t="targets">Targets</button>
@@ -109,171 +118,140 @@ tr.hl{background:#fdf6e3}
 
   <!-- LEDGER -->
   <section id="v-ledger">
+    <div class="two noprint">
+      <div class="card" id="billCard">
+        <h2 id="billFormTitle">New bill (debit)</h2>
+        <div class="row">
+          <div class="f"><label>Medical</label><select id="bParty"></select></div>
+          <div class="f"><label>Bill no.</label><input id="bNo" placeholder="optional"></div>
+          <div class="f"><label>Date</label><input type="date" id="bDate"></div>
+          <div class="f"><label>Note</label><input id="bNote" placeholder="optional"></div>
+        </div>
+        <div id="bLines" style="margin-top:10px"></div>
+        <div class="row" style="margin-top:10px;align-items:center">
+          <button class="ghost" id="bAddLine">+ Add item</button>
+          <div class="count" style="margin-left:0"><b class="num" id="bLineTot">&#8377;0</b> &nbsp;total for this bill</div>
+          <button class="act" id="bSave" style="margin-left:auto">Save bill</button>
+          <button class="ghost" id="bCancel" style="display:none">Cancel edit</button>
+        </div>
+      </div>
+
+      <div class="card" id="depCard">
+        <h2 id="depFormTitle">New payment / deposit (credit)</h2>
+        <div class="row">
+          <div class="f"><label>Medical</label><select id="dParty"></select></div>
+          <div class="f"><label>Amount &#8377;</label><input id="dAmt" class="num" inputmode="numeric" placeholder="0"></div>
+          <div class="f"><label>Date</label><input type="date" id="dDate"></div>
+          <div class="f"><label>Payment mode</label>
+            <select id="dMode"><option value="Cash">Cash</option><option value="Bank / UPI">Bank / UPI</option><option value="Cheque">Cheque</option><option value="Discount">Discount</option><option value="Other">Other</option></select>
+          </div>
+          <div class="f"><label>Note / Ref</label><input id="dNote" placeholder="optional"></div>
+          <button class="act" id="dSave">Save payment</button>
+          <button class="ghost" id="dCancel" style="display:none">Cancel edit</button>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
+      <h2>Account ledger statement</h2>
       <div class="bar noprint">
-        <div class="f"><label>City</label><select id="fCity"><option value="">All cities</option></select></div>
-        <div class="f"><label>Party</label><select id="fParty"><option value="">All parties</option></select></div>
-        <div class="f"><label>Search</label><input id="fQ" placeholder="party, city, bill or bilty no."></div>
-        <div class="f"><label>Status</label><select id="fStatus">
-          <option value="">All</option><option value="due">Balance pending</option>
-          <option value="zero">Fully settled</option><option value="over">Overpaid</option><option value="none">No bills yet</option>
-        </select></div>
-        <div class="f"><label>From date</label><input type="date" id="fFrom"></div>
-        <div class="f"><label>To date</label><input type="date" id="fTo"></div>
-        <div class="f"><label>Sort by</label><select id="fSort">
-          <option value="bal">Balance, high to low</option><option value="name">Party name</option>
-          <option value="city">City</option><option value="val">Parcel value</option><option value="dep">Deposited</option>
-        </select></div>
-        <button class="ghost" id="fClear">Clear filters</button>
-        <div class="count" id="fCount"></div>
+        <div class="f"><label>Medical</label><select id="lfParty"><option value="">Select a medical to view statement</option></select></div>
+        <div class="f"><label>From date</label><input type="date" id="lfFrom"></div>
+        <div class="f"><label>To date</label><input type="date" id="lfTo"></div>
+        <button class="ghost" id="lfClear">Clear filters</button>
       </div>
       <div class="scroll"><table id="tLedger"></table></div>
-      <div class="tot" id="totals"></div>
-      <div class="hint">Parcel balance = parcel value &minus; deposits. Bill amount is tracked separately and is not reduced by deposits. Date filter counts only the bills and deposits inside the range.</div>
+      <div class="tot" id="ledgerTot"></div>
       <div class="exp">
-        <button class="ghost" data-x="ledger-pdf">Download PDF</button>
-        <button class="ghost" data-x="ledger-png">Download PNG</button>
-        <button class="ghost" data-x="ledger-csv">Download CSV</button>
-      </div>
-    </div>
-
-    <div class="card" id="detailCard" style="display:none">
-      <h2 id="detailName"></h2>
-      <div class="two">
-        <div class="scroll">
-          <table>
-            <thead><tr><th>Date</th><th>Bill no.</th><th>Bilty</th><th class="r">Parcel value</th><th class="r">Bill amount</th><th class="r act-col">Edit</th></tr></thead>
-            <tbody id="tBills"></tbody>
-          </table>
-        </div>
-        <div class="scroll">
-          <table>
-            <thead><tr><th>Date</th><th>Mode</th><th>Note</th><th class="r">Deposit</th><th class="r act-col">Edit</th></tr></thead>
-            <tbody id="tDeps"></tbody>
-          </table>
-        </div>
-      </div>
-      <div class="tot" id="detailTot"></div>
-      <div class="exp">
-        <button class="ghost" data-x="party-pdf">Download party statement PDF</button>
-        <button class="ghost" data-x="party-png">Download party statement PNG</button>
-        <button class="ghost warn noprint" id="delPartyAll">Delete this party and all its data</button>
+        <button class="ghost" data-x="ledger-pdf">Download statement PDF</button>
+        <button class="ghost" data-x="ledger-png">Download statement PNG</button>
+        <button class="ghost" data-x="ledger-csv">Download statement CSV</button>
       </div>
     </div>
   </section>
 
-  <!-- BILLS -->
-  <section id="v-bills" style="display:none">
-    <div class="card noprint" id="billCard">
-      <h2 id="billFormTitle">New bill</h2>
-      <div class="row">
-        <div class="f"><label>Party</label><select id="bParty"></select></div>
-        <div class="f"><label>Date</label><input type="date" id="bDate"></div>
-        <div class="f"><label>Bill no.</label><input id="bNo"></div>
-        <div class="f"><label>Bilty no.</label><input id="bBilty"></div>
-        <div class="f"><label>Parcel / pieces</label><input id="bParcel" placeholder="24 pc shirt"></div>
-        <div class="f"><label>Parcel value &#8377;</label><input id="bVal" class="num" inputmode="numeric" placeholder="200000"></div>
-        <div class="f"><label>Bill amount &#8377;</label><input id="bAmt" class="num" inputmode="numeric" placeholder="30000"></div>
-        <button class="act" id="bSave">Save bill</button>
-        <button class="ghost" id="bCancel" style="display:none">Cancel edit</button>
-      </div>
-      <div class="hint">Parcel value is the goods value that deposits are set against. Bill amount is the billed entry. Enter jumps to the next field; Enter on the last field saves.</div>
-    </div>
-    <div class="card">
-      <h2>Bills</h2>
-      <div class="bar noprint">
-        <div class="f"><label>Search</label><input id="bfQ" placeholder="bill no., bilty, parcel, party"></div>
-        <div class="f"><label>City</label><select id="bfCity"><option value="">All cities</option></select></div>
-        <div class="f"><label>Party</label><select id="bfParty"><option value="">All parties</option></select></div>
-        <div class="f"><label>From date</label><input type="date" id="bfFrom"></div>
-        <div class="f"><label>To date</label><input type="date" id="bfTo"></div>
-        <div class="f"><label>Sort by</label><select id="bfSort">
-          <option value="dateD">Date, newest first</option><option value="dateA">Date, oldest first</option>
-          <option value="valD">Parcel value, high to low</option><option value="amtD">Bill amount, high to low</option>
-          <option value="party">Party name</option>
-        </select></div>
-        <button class="ghost" id="bfClear">Clear filters</button>
-        <div class="count" id="bfCount"></div>
-      </div>
-      <div class="scroll"><table id="tAllBills"></table></div>
-      <div class="exp">
-        <button class="ghost" data-x="bills-pdf">Download PDF</button>
-        <button class="ghost" data-x="bills-png">Download PNG</button>
-        <button class="ghost" data-x="bills-csv">Download CSV</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- DEPOSITS -->
-  <section id="v-deposits" style="display:none">
-    <div class="card noprint" id="depCard">
-      <h2 id="depFormTitle">New deposit</h2>
-      <div class="row">
-        <div class="f"><label>Party</label><select id="dParty"></select></div>
-        <div class="f"><label>Date</label><input type="date" id="dDate"></div>
-        <div class="f"><label>Amount &#8377;</label><input id="dAmt" class="num" inputmode="numeric"></div>
-        <div class="f"><label>Mode</label><select id="dMode"><option>Online</option><option>Cash</option><option>Cheque</option><option>UPI</option><option>Adjustment</option></select></div>
-        <div class="f"><label>Note</label><input id="dNote" placeholder="optional"></div>
-        <button class="act" id="dSave">Save deposit</button>
-        <button class="ghost" id="dCancel" style="display:none">Cancel edit</button>
-      </div>
-      <div class="hint">Deposits are party-wise and reduce the parcel balance. Any deposit stays editable &mdash; hit &#9998; on its row and change the amount or date until the parcel balance reads zero.</div>
-    </div>
-    <div class="card">
-      <h2>Deposits</h2>
-      <div class="bar noprint">
-        <div class="f"><label>Search</label><input id="dfQ" placeholder="party, note, mode"></div>
-        <div class="f"><label>City</label><select id="dfCity"><option value="">All cities</option></select></div>
-        <div class="f"><label>Party</label><select id="dfParty"><option value="">All parties</option></select></div>
-        <div class="f"><label>Mode</label><select id="dfMode"><option value="">All modes</option></select></div>
-        <div class="f"><label>From date</label><input type="date" id="dfFrom"></div>
-        <div class="f"><label>To date</label><input type="date" id="dfTo"></div>
-        <div class="f"><label>Sort by</label><select id="dfSort">
-          <option value="dateD">Date, newest first</option><option value="dateA">Date, oldest first</option>
-          <option value="amtD">Amount, high to low</option><option value="party">Party name</option>
-        </select></div>
-        <button class="ghost" id="dfClear">Clear filters</button>
-        <div class="count" id="dfCount"></div>
-      </div>
-      <div class="scroll"><table id="tAllDeps"></table></div>
-      <div class="exp">
-        <button class="ghost" data-x="deps-pdf">Download PDF</button>
-        <button class="ghost" data-x="deps-png">Download PNG</button>
-        <button class="ghost" data-x="deps-csv">Download CSV</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- PARTIES -->
+  <!-- MEDICALS -->
   <section id="v-parties" style="display:none">
     <div class="card noprint" id="partyCard">
-      <h2 id="partyFormTitle">New party (one time setup)</h2>
+      <h2 id="partyFormTitle">New medical (one time setup)</h2>
       <div class="row">
-        <div class="f"><label>Party name</label><input id="pName"></div>
+        <div class="f"><label>Medical name</label><input id="pName" placeholder="shop / chemist name"></div>
         <div class="f"><label>City</label><input id="pCity"></div>
         <div class="f"><label>Phone</label><input id="pPhone"></div>
-        <button class="act" id="pSave">Save party</button>
+        <button class="act" id="pSave">Save medical</button>
         <button class="ghost" id="pCancel" style="display:none">Cancel edit</button>
       </div>
     </div>
     <div class="card">
-      <h2>Party directory</h2>
+      <h2>Medical directory</h2>
       <div class="bar noprint">
         <div class="f"><label>Search</label><input id="pfQ" placeholder="name, city, phone"></div>
         <div class="f"><label>City</label><select id="pfCity"><option value="">All cities</option></select></div>
+        <div class="f"><label>From date</label><input type="date" id="pfFrom"></div>
+        <div class="f"><label>To date</label><input type="date" id="pfTo"></div>
         <div class="f"><label>Sort by</label><select id="pfSort">
-          <option value="name">Party name</option><option value="city">City</option>
-          <option value="bal">Parcel balance</option><option value="bills">Bill count</option>
+          <option value="balD">Outstanding balance, high to low</option>
+          <option value="valD">Value prescribed, high to low</option>
+          <option value="name">Medical name</option>
+          <option value="city">City</option>
+          <option value="rxD">Prescription count</option>
         </select></div>
         <button class="ghost" id="pfClear">Clear filters</button>
         <div class="count" id="pfCount"></div>
       </div>
       <div class="scroll"><table id="tAllParties"></table></div>
-      <div class="hint">Deleting a party removes all of its bills and deposits too. You will be asked to confirm.</div>
+      <div class="hint">Click a row to open statement. Deleting a medical removes its entries too.</div>
       <div class="exp">
         <button class="ghost" data-x="parties-pdf">Download PDF</button>
         <button class="ghost" data-x="parties-png">Download PNG</button>
         <button class="ghost" data-x="parties-csv">Download CSV</button>
+      </div>
+    </div>
+
+    <div class="card" id="detailCard" style="display:none">
+      <h2 id="detailName"></h2>
+      <div class="scroll"><table id="tPartyRx"></table></div>
+      <div class="tot" id="detailTot"></div>
+      <div class="exp">
+        <button class="ghost" data-x="party-pdf">Download medical statement PDF</button>
+        <button class="ghost" data-x="party-png">Download medical statement PNG</button>
+        <button class="ghost warn noprint" id="delPartyAll">Delete this medical and all its data</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ITEMS -->
+  <section id="v-items" style="display:none">
+    <div class="card noprint" id="itemCard">
+      <h2 id="itemFormTitle">New item</h2>
+      <div class="row">
+        <div class="f" style="flex:1;min-width:200px"><label>Item name</label><input id="iName" placeholder="Med A"></div>
+        <div class="f"><label>Pack / unit</label><input id="iPack" placeholder="10 x 10 strip"></div>
+        <div class="f"><label>Default rate &#8377;</label><input id="iRate" class="num" inputmode="numeric" placeholder="0"></div>
+        <div class="f"><label>Company / note</label><input id="iNote" placeholder="optional"></div>
+        <button class="act" id="iSave">Save item</button>
+        <button class="ghost" id="iCancel" style="display:none">Cancel edit</button>
+      </div>
+      <div class="hint">Items auto-fill rate in both Bill and Prescription lines.</div>
+    </div>
+    <div class="card">
+      <h2>Item collection</h2>
+      <div class="bar noprint">
+        <div class="f"><label>Search</label><input id="ifQ" placeholder="item, pack, company"></div>
+        <div class="f"><label>From date</label><input type="date" id="ifFrom"></div>
+        <div class="f"><label>To date</label><input type="date" id="ifTo"></div>
+        <div class="f"><label>Sort by</label><select id="ifSort">
+          <option value="valD">Billed value, high to low</option><option value="name">Item name</option>
+          <option value="qtyD">Billed quantity, high to low</option><option value="rxD">Prescribed quantity, high to low</option>
+        </select></div>
+        <button class="ghost" id="ifClear">Clear filters</button>
+        <div class="count" id="ifCount"></div>
+      </div>
+      <div class="scroll"><table id="tItems"></table></div>
+      <div class="exp">
+        <button class="ghost" data-x="items-pdf">Download PDF</button>
+        <button class="ghost" data-x="items-png">Download PNG</button>
+        <button class="ghost" data-x="items-csv">Download CSV</button>
       </div>
     </div>
   </section>
@@ -307,7 +285,6 @@ tr.hl{background:#fdf6e3}
         <div class="count" id="kfCount"></div>
       </div>
       <div class="scroll"><table id="tDocs"></table></div>
-      <div class="hint">Value prescribed counts every medicine line written by the doctor to any medical inside the date range. Deleting a doctor also deletes that doctor&#8217;s prescriptions and targets.</div>
       <div class="exp">
         <button class="ghost" data-x="doctors-pdf">Download PDF</button>
         <button class="ghost" data-x="doctors-png">Download PNG</button>
@@ -332,10 +309,11 @@ tr.hl{background:#fdf6e3}
       <h2 id="rxFormTitle">New prescription entry</h2>
       <div class="row">
         <div class="f"><label>Doctor</label><select id="rDoc"></select></div>
-        <div class="f"><label>Medical (party)</label><select id="rParty"></select></div>
+        <div class="f"><label>Medical</label><select id="rParty"></select></div>
         <div class="f"><label>Date</label><input type="date" id="rDate"></div>
         <div class="f"><label>Note</label><input id="rNote" placeholder="optional"></div>
       </div>
+      <datalist id="itemCat"></datalist>
       <div id="rxLines" style="margin-top:10px"></div>
       <div class="row" style="margin-top:10px;align-items:center">
         <button class="ghost" id="rxAdd">+ Add medicine</button>
@@ -343,7 +321,6 @@ tr.hl{background:#fdf6e3}
         <button class="act" id="rSave" style="margin-left:auto">Save prescription</button>
         <button class="ghost" id="rCancel" style="display:none">Cancel edit</button>
       </div>
-      <div class="hint">One entry = one doctor, one medical, one date, and as many medicines as you want. Amount fills itself from qty &times; rate, and stays editable if you want to override it.</div>
     </div>
     <div class="card">
       <h2>Prescriptions</h2>
@@ -381,12 +358,11 @@ tr.hl{background:#fdf6e3}
         <div class="f"><label>Duration</label><input id="gDur" class="num" inputmode="numeric" value="1" style="min-width:80px"></div>
         <div class="f"><label>Period unit</label><select id="gUnit"><option value="months">Months</option><option value="days">Days</option><option value="years">Years</option></select></div>
         <div class="f"><label>Start date</label><input type="date" id="gStart"></div>
-        <div class="f"><label>Label / remark</label><input id="gNote" placeholder="e.g. Q3 scheme, monsoon push"></div>
+        <div class="f"><label>Label / remark</label><input id="gNote" placeholder="e.g. Q3 scheme"></div>
         <div class="f"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="gAuto"> Roll over every next period</label></div>
         <button class="act" id="gSave">Save target</button>
         <button class="ghost" id="gCancel" style="display:none">Cancel edit</button>
       </div>
-      <div class="hint">The target amount repeats every period. Periods run from your start date onward in blocks of the duration you set. Tick the box to carry every shortfall or surplus into the next period automatically, or leave it off and use the &#8220;Roll into next&#8221; button on any single period below.</div>
     </div>
     <div class="card">
       <h2>Target tracking</h2>
@@ -399,7 +375,6 @@ tr.hl{background:#fdf6e3}
         <div class="count" id="gfCount"></div>
       </div>
       <div id="tgList"></div>
-      <div class="hint">Achieved = value of everything that doctor prescribed, across all medicals, inside the period dates. Carried in is what a previous period pushed forward: a positive figure raises this period&#8217;s target, a negative one is surplus credit and lowers it.</div>
       <div class="exp">
         <button class="ghost" data-x="targets-pdf">Download PDF</button>
         <button class="ghost" data-x="targets-png">Download PNG</button>
@@ -411,13 +386,29 @@ tr.hl{background:#fdf6e3}
   <!-- DATA -->
   <section id="v-data" style="display:none">
     <div class="card">
+      <h2>Auto-save to a data file</h2>
+      <div class="stat" id="fsStat"></div>
+      <div class="row" style="align-items:flex-end">
+        <button class="ghost" id="fsPick">Choose data file</button>
+        <button class="ghost" id="fsOpen">Open an existing data file</button>
+        <button class="ghost" id="fsNow">Save to file now</button>
+        <button class="ghost warn" id="fsStop" style="display:none">Stop using this file</button>
+      </div>
+      <div class="row" style="align-items:flex-end;margin-top:12px">
+        <div class="f"><label>Auto-save every</label><input id="fsMin" class="num" inputmode="numeric" style="min-width:90px"></div>
+        <div class="f"><label>&nbsp;</label><select id="fsUnit"><option value="1">Minutes</option><option value="60">Hours</option></select></div>
+        <button class="ghost" id="fsApply">Apply</button>
+        <label class="chk" style="margin-left:8px"><input type="checkbox" id="fsOn"> Auto-save switched on</label>
+      </div>
+      <div class="hint" id="fsHint"></div>
+    </div>
+    <div class="card">
       <h2>Download backup</h2>
       <div class="row">
         <button class="ghost" id="exp">Download backup JSON (date_time)</button>
         <button class="ghost" id="seed">Load sample data</button>
         <button class="ghost warn" id="wipe">Erase all data</button>
       </div>
-      <div class="hint">File is named bts-backup-YYYY-MM-DD_HHMM.json &mdash; one file holding every party, bill and deposit. PDF, PNG and CSV downloads sit at the bottom of each tab.</div>
     </div>
     <div class="card">
       <h2>Load data from JSON</h2>
@@ -430,7 +421,6 @@ tr.hl{background:#fdf6e3}
         </div>
         <label class="act" style="cursor:pointer;padding:9px 16px">Choose file(s) and load<input type="file" id="imp" accept=".json,application/json" multiple hidden></label>
       </div>
-      <div class="hint">Pick one file or several at once &mdash; hold Ctrl (Windows) or Cmd (Mac) while clicking. All chosen files load together. Merge keeps what is already here and skips records already present; Replace clears everything first.</div>
       <div id="impReport"></div>
       <div class="hint" id="dataHint"></div>
     </div>
@@ -441,10 +431,24 @@ tr.hl{background:#fdf6e3}
   </section>
 </main>
 
+<div class="ovl" id="firstRun" style="display:none"><div class="box">
+  <h3>Where should this file save your data?</h3>
+  <p id="frText"></p>
+  <div class="row">
+    <button class="act" id="frPick">Choose a data file</button>
+    <button class="ghost" id="frOpen">Open an existing data file</button>
+    <button class="ghost" id="frSkip">Not now, keep it on this device</button>
+  </div>
+  <div class="hint" id="frHint" style="margin-top:14px"></div>
+</div></div>
+
 <script>
-const S={parties:[],bills:[],deposits:[],doctors:[],rx:[],targets:[]};
-let mem=null, openParty=null, editBill=null, editDep=null, editParty=null;
-let openDoc=null, editDoc=null, editRx=null, editTg=null;
+const S={parties:[],bills:[],deposits:[],doctors:[],rx:[],targets:[],items:[]};
+let mem=null, openParty=null, editParty=null;
+let openDoc=null, editDoc=null, editRx=null, editTg=null, editItem=null;
+let editBill=null, editDep=null;
+let fh=null, dirty=false, lastSaved=null, timer=null, fsMsg='';
+const canFS=typeof window.showSaveFilePicker==='function';
 const V={};
 const $=id=>document.getElementById(id);
 const money=n=>'\u20B9'+(+n||0).toLocaleString('en-IN');
@@ -457,35 +461,214 @@ const today=()=>new Date().toISOString().slice(0,10);
 const val=id=>$(id).value.trim();
 const T=(t,c,a)=>({t:t==null?'':String(t),c:c||'',a:a||'l'});
 
-async function load(){
-  try{const r=await window.storage.get('bts');Object.assign(S,JSON.parse(r.value));
-    ['parties','bills','deposits','doctors','rx','targets'].forEach(k=>{if(!Array.isArray(S[k]))S[k]=[]});
-    $('saveState').textContent='Saved on this device';}
-  catch(e){
-    try{await window.storage.set('bts',JSON.stringify(S));$('saveState').textContent='Saved on this device';}
-    catch(e2){mem=true;$('saveState').textContent='Session only \u2014 download a backup before closing';}
+const store={
+  async get(k){
+    try{if(window.storage){const r=await window.storage.get(k);if(r&&r.value!=null)return r.value}}catch(e){}
+    try{const v=localStorage.getItem(k);if(v!=null)return v}catch(e){}
+    return null;
+  },
+  async set(k,v){
+    let ok=false;
+    try{if(window.storage){await window.storage.set(k,v);ok=true}}catch(e){}
+    try{localStorage.setItem(k,v);ok=true}catch(e){}
+    return ok;
   }
+};
+const CFG={min:1,on:true,asked:false,name:''};
+const snapshot=()=>({exportedAt:new Date().toISOString(),parties:S.parties,items:S.items,
+  doctors:S.doctors,rx:S.rx,targets:S.targets,bills:S.bills,deposits:S.deposits});
+const saveCfg=()=>store.set('btscfg',JSON.stringify(CFG));
+
+function idb(){return new Promise((res,rej)=>{
+  if(!window.indexedDB)return rej('no idb');
+  const r=indexedDB.open('bts-fs',1);
+  r.onupgradeneeded=()=>r.result.createObjectStore('h');
+  r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function idbPut(k,v){const db=await idb();return new Promise((res,rej)=>{
+  const t=db.transaction('h','readwrite');t.objectStore('h').put(v,k);t.oncomplete=()=>res(1);t.onerror=()=>rej(t.error)})}
+async function idbGet(k){const db=await idb();return new Promise((res,rej)=>{
+  const t=db.transaction('h','readonly'),q=t.objectStore('h').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}
+async function idbDel(k){const db=await idb();return new Promise((res,rej)=>{
+  const t=db.transaction('h','readwrite');t.objectStore('h').delete(k);t.oncomplete=()=>res(1);t.onerror=()=>rej(t.error)})}
+
+async function fsRestore(){try{const h=await idbGet('fh');if(h)fh=h}catch(e){}}
+async function fsPerm(ask){
+  if(!fh)return false;
+  try{
+    if(fh.queryPermission){const p=await fh.queryPermission({mode:'readwrite'});if(p==='granted')return true}
+    if(ask&&fh.requestPermission)return (await fh.requestPermission({mode:'readwrite'}))==='granted';
+    return !fh.queryPermission;
+  }catch(e){return false}
+}
+async function fsWrite(force){
+  if(!fh)return false;
+  if(!force&&!dirty)return true;
+  if(!(await fsPerm(false))){fsMsg='needperm';fsPaint();return false}
+  try{
+    const w=await fh.createWritable();
+    await w.write(JSON.stringify(snapshot(),null,2));
+    await w.close();
+    dirty=false;lastSaved=new Date();fsMsg='';fsPaint();return true;
+  }catch(e){fsMsg='Could not write to the file: '+(e.message||e);fsPaint();return false}
+}
+async function fsPick(){
+  if(!canFS){fsMsg='unsupported';fsPaint();return false}
+  try{
+    const h=await window.showSaveFilePicker({suggestedName:CFG.name||'bill-tracking-data.json',
+      types:[{description:'Bill Tracking data',accept:{'application/json':['.json']}}]});
+    fh=h;CFG.name=h.name;CFG.asked=true;CFG.on=true;
+    try{await idbPut('fh',h)}catch(e){}
+    await saveCfg();await fsWrite(true);startTimer();fsPaint();return true;
+  }catch(e){if(e&&e.name==='AbortError')return false;
+    fsMsg=(e&&e.name==='SecurityError')?'blocked':'Could not open the file picker: '+(e.message||e);fsPaint();return false}
+}
+async function fsOpenExisting(){
+  if(!canFS){fsMsg='unsupported';fsPaint();return false}
+  try{
+    const [h]=await window.showOpenFilePicker({types:[{description:'Bill Tracking data',accept:{'application/json':['.json']}}]});
+    const d=JSON.parse(await (await h.getFile()).text());
+    if(!d||(!d.parties&&!d.bills&&!d.deposits&&!d.doctors&&!d.rx&&!d.targets))
+      {alert('That file is not a Bill Tracking data file.');return false}
+    const has=S.parties.length||S.items.length||S.doctors.length||S.rx.length||S.targets.length;
+    if(has&&confirm('This device already holds data.\n\nOK = replace it with what is in '+h.name+
+      '\nCancel = merge the file into what is already here'))
+      {S.parties=[];S.bills=[];S.deposits=[];S.doctors=[];S.rx=[];S.targets=[];S.items=[];}
+    mergeData(d);
+    fh=h;CFG.name=h.name;CFG.asked=true;CFG.on=true;
+    try{await idbPut('fh',h)}catch(e){}
+    await saveCfg();openParty=null;openDoc=null;await save();await fsWrite(true);startTimer();
+    $('dataHint').textContent='Loaded '+h.name+'. Now holding '+S.parties.length+' medicals, '+S.items.length+' items, '+S.doctors.length+' doctors, '+S.rx.length+' prescriptions, '+S.targets.length+' targets.';
+    return true;
+  }catch(e){if(e&&e.name==='AbortError')return false;
+    fsMsg=(e&&e.name==='SecurityError')?'blocked':'Could not open that file: '+(e.message||e);fsPaint();return false}
+}
+async function fsStop(){
+  if(!confirm('Stop auto-saving into '+(CFG.name||'the data file')+'?\nYour data stays on this device and the file keeps its last saved copy.'))return;
+  fh=null;CFG.name='';try{await idbDel('fh')}catch(e){}
+  await saveCfg();fsPaint();
+}
+function startTimer(){
+  clearInterval(timer);timer=null;
+  const m=Math.max(1,+CFG.min||1);
+  if(!CFG.on)return;
+  timer=setInterval(()=>{if(fh)fsWrite();},m*60000);
+}
+function fsPaint(){
+  const on=CFG.on,m=Math.max(1,+CFG.min||1);
+  const every=m%60===0&&m>=60?(m/60)+' hour'+(m===60?'':'s'):m+' minute'+(m===1?'':'s');
+  let head;
+  if(fh)head=(on?'Auto-saving to ':'File set, auto-save off: ')+CFG.name+(lastSaved?' \u00B7 last saved '+lastSaved.toTimeString().slice(0,5):(dirty?' \u00B7 unsaved changes':''));
+  else head=mem?'Session only \u2014 download a backup before closing':'Saved on this device';
+  $('saveState').textContent=head;
+  if(!$('fsStat'))return;
+  const dot=fh?(fsMsg==='needperm'?'warn':on?'':'off'):'off';
+  const state=!canFS?'This browser cannot write straight to a file.'
+    :fsMsg==='needperm'?'Permission to write to '+CFG.name+' has lapsed. Press Reconnect.'
+    :fh?(on?'Auto-saving to '+CFG.name+' every '+every:'Linked to '+CFG.name+', auto-save is switched off')
+    :'No data file chosen. Data lives in this browser only.';
+  $('fsStat').innerHTML='<span><span class="dot '+dot+'"></span>'+esc(state)+'</span>'+
+    (lastSaved?'<span>Last written '+lastSaved.toTimeString().slice(0,8)+'</span>':'')+
+    (dirty&&fh?'<span class="due">Changes waiting</span>':'');
+  $('fsPick').textContent=fh?'Change data file':'Choose data file';
+  $('fsStop').style.display=fh?'':'none';
+  $('fsNow').textContent=fsMsg==='needperm'?'Reconnect and save now':'Save to file now';
+  $('fsNow').disabled=!fh;
+  $('fsOn').checked=!!on;
+  if(d0!==CFG.min){d0=CFG.min;$('fsMin').value=(m%60===0&&m>=60)?m/60:m;$('fsUnit').value=(m%60===0&&m>=60)?'60':'1'}
+}
+let d0=null;
+function firstRun(){
+  $('frText').textContent=canFS
+    ? 'Pick a file on your computer and this app will keep saving into it by itself.'
+    : 'This browser cannot write straight into a file you choose. Your data will be kept inside this browser.';
+  $('frPick').style.display=$('frOpen').style.display=canFS?'':'none';
+  $('firstRun').style.display='flex';
+}
+async function firstRunDone(){$('firstRun').style.display='none';CFG.asked=true;await saveCfg();fsPaint()}
+$('frPick').onclick=async()=>{if(await fsPick())firstRunDone();};
+$('frOpen').onclick=async()=>{if(await fsOpenExisting())firstRunDone();};
+$('frSkip').onclick=()=>firstRunDone();
+$('fsPick').onclick=()=>fsPick();
+$('fsOpen').onclick=()=>fsOpenExisting();
+$('fsStop').onclick=()=>fsStop();
+$('fsNow').onclick=async()=>{
+  if(!fh)return;
+  if(!(await fsPerm(true))){fsMsg='needperm';fsPaint();return}
+  fsMsg='';await fsWrite(true);
+};
+$('fsApply').onclick=async()=>{
+  const n=+$('fsMin').value,u=+$('fsUnit').value||1;
+  if(!n||n<1)return alert('Enter how often to save, as a whole number.');
+  CFG.min=n*u;d0=null;await saveCfg();startTimer();fsPaint();
+};
+$('fsOn').onchange=async()=>{CFG.on=$('fsOn').checked;await saveCfg();startTimer();fsPaint()};
+
+async function load(){
+  const c=await store.get('btscfg');if(c)try{Object.assign(CFG,JSON.parse(c))}catch(e){}
+  const raw=await store.get('bts');
+  if(raw)try{Object.assign(S,JSON.parse(raw))}catch(e){}
+  ['parties','bills','deposits','doctors','rx','targets','items'].forEach(k=>{if(!Array.isArray(S[k]))S[k]=[]});
+  mem=!(await store.set('bts',JSON.stringify(S)));
+  await fsRestore();
   render();
+  fsPaint();
+  startTimer();
+  if(!CFG.asked)firstRun();
 }
 async function save(){
   render();
-  if(mem)return;
-  try{await window.storage.set('bts',JSON.stringify(S));}catch(e){mem=true;$('saveState').textContent='Session only \u2014 download a backup before closing';}
+  dirty=true;
+  if(!mem){if(!(await store.set('bts',JSON.stringify(S))))mem=true}
+  fsPaint();
 }
 
 const party=id=>S.parties.find(p=>p.id===id)||{name:'\u2014',city:'\u2014'};
 const inRange=(d,f,t)=>(!f||(d||'')>=f)&&(!t||(d||'')<=t);
-const billsOf=id=>S.bills.filter(b=>b.partyId===id&&inRange(b.date,val('fFrom'),val('fTo')));
-const depsOf=id=>S.deposits.filter(d=>d.partyId===id&&inRange(d.date,val('fFrom'),val('fTo')));
-const parcelVal=id=>billsOf(id).reduce((s,b)=>s+ +b.value,0);
-const billAmt=id=>billsOf(id).reduce((s,b)=>s+ +b.amount,0);
-const paidOf=id=>depsOf(id).reduce((s,d)=>s+ +d.amount,0);
-const balance=id=>parcelVal(id)-paidOf(id);
-const lastDep=id=>depsOf(id).map(d=>d.date).sort().pop();
-const tab=t=>document.querySelector('.tabs button[data-t="'+t+'"]').click();
+const pRx=(pid,f,t)=>S.rx.filter(r=>r.partyId===pid&&inRange(r.date,f,t));
+const pValue=(pid,f,t)=>pRx(pid,f,t).reduce((s,r)=>s+rxTot(r),0);
+const pQty=(pid,f,t)=>pRx(pid,f,t).reduce((s,r)=>s+rxQty(r),0);
+const pDocs=(pid,f,t)=>new Set(pRx(pid,f,t).map(r=>r.doctorId)).size;
+const pBills=(pid,f,t)=>S.bills.filter(b=>b.partyId===pid&&inRange(b.date,f,t));
+const pDeps=(pid,f,t)=>S.deposits.filter(d=>d.partyId===pid&&inRange(d.date,f,t));
+const pBilled=(pid,f,t)=>pBills(pid,f,t).reduce((s,b)=>s+itemVal(b),0);
+const pPaid=(pid,f,t)=>pDeps(pid,f,t).reduce((s,d)=>s+ +d.amount,0);
+const pBalance=(pid,f,t)=>pBilled(pid,f,t)-pPaid(pid,f,t);
+
+const itemsOf=b=>Array.isArray(b.items)?b.items:[];
+const itemQty=b=>itemsOf(b).reduce((s,i)=>s+ +i.qty,0);
+const itemVal=b=>itemsOf(b).reduce((s,i)=>s+ +i.amount,0);
+
+function itemCatalog(){
+  const set=new Set();
+  S.items.forEach(i=>i.name&&set.add(i.name));
+  S.bills.forEach(b=>itemsOf(b).forEach(i=>i.name&&set.add(i.name)));
+  S.rx.forEach(r=>(r.lines||[]).forEach(l=>l.name&&set.add(l.name)));
+  return [...set].sort((a,b)=>a.localeCompare(b));
+}
+const findItem=n=>S.items.find(i=>i.name.trim().toLowerCase()===String(n||'').trim().toLowerCase());
+function absorbItems(lines){
+  let added=0;
+  (lines||[]).forEach(l=>{
+    const n=(l.name||'').trim();if(!n||findItem(n))return;
+    S.items.push({id:uid(),name:n,pack:'',rate:+l.rate||0,note:''});added++;
+  });
+  return added;
+}
+const billedOf=(name,f,t)=>{let q=0,v=0,n=0;
+  S.bills.forEach(b=>{if(!inRange(b.date,f,t))return;
+    itemsOf(b).forEach(i=>{if((i.name||'').trim().toLowerCase()!==name.trim().toLowerCase())return;q+=+i.qty;v+=+i.amount;n++})});
+  return {q,v,n}};
+const scriptedOf=(name,f,t)=>{let q=0,v=0,n=0;
+  S.rx.forEach(r=>{if(!inRange(r.date,f,t))return;
+    (r.lines||[]).forEach(l=>{if((l.name||'').trim().toLowerCase()!==name.trim().toLowerCase())return;q+=+l.qty;v+=+l.amount;n++})});
+  return {q,v,n}};
+
+const tab=t=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x.dataset.t===t));
+  ['ledger','parties','items','doctors','rx','targets','data'].forEach(x=>$('v-'+x).style.display=(x===t)?'':'none');
+};
 const cls=n=>n>0?'due':(n<0?'muted':'paid');
 
-/* ---------- doctors / prescriptions / targets ---------- */
 const doctor=id=>S.doctors.find(d=>d.id===id)||{name:'\u2014',city:'\u2014'};
 const rxTot=r=>(r.lines||[]).reduce((s,l)=>s+ +l.amount,0);
 const rxQty=r=>(r.lines||[]).reduce((s,l)=>s+ +l.qty,0);
@@ -502,7 +685,7 @@ function addSpan(s,n,unit){
   return d.toISOString().slice(0,10);
 }
 const unitTxt=(n,u)=>n+' '+(u==='days'?'day':u==='years'?'year':'month')+(n==1?'':'s');
-/* builds every period of a target, applying carried-in rollover */
+
 function periodsOf(t){
   const dur=Math.max(1,+t.dur||1),out=[];
   const lastRx=S.rx.filter(r=>r.doctorId===t.doctorId).map(r=>r.date).sort().pop()||'';
@@ -520,11 +703,10 @@ function periodsOf(t){
   return out;
 }
 
-/* ---------- generic table rendering ---------- */
 function paint(elId,D,opt){
   opt=opt||{};
   const el=$(elId);
-  const head='<thead><tr>'+D.headers.map((h,i)=>'<th class="'+(D.aligns[i]==='r'?'r ':'')+(h==='Edit'?'act-col':'')+'">'+esc(h)+'</th>').join('')+'</tr></thead>';
+  const head='<thead><tr>'+D.headers.map((h,i)=>'<th class="'+(D.aligns[i]==='r'?'r ':'')+(h==='Action'?'act-col':'')+'">'+esc(h)+'</th>').join('')+'</tr></thead>';
   const body=D.rows.length?D.rows.map((r,ri)=>{
     const attrs=(opt.clickId?' class="clk'+(D.rowCls&&D.rowCls[ri]?' '+D.rowCls[ri]:'')+'" data-p="'+D.ids[ri]+'"':(D.rowCls&&D.rowCls[ri]?' class="'+D.rowCls[ri]+'"':''));
     let tds=r.map(c=>'<td class="'+(c.a==='r'?'r ':'')+'num-maybe '+(c.c||'')+'">'+esc(c.t)+'</td>').join('');
@@ -538,82 +720,89 @@ function paint(elId,D,opt){
 function fmtSum(pairs){return pairs.map(p=>'<div><span>'+p[0]+'</span><b class="num '+(p[2]||'')+'">'+p[1]+'</b></div>').join('')}
 function rangeTxt(f,t){return (f||t)?('Dates '+(f?dmy(f):'start')+' to '+(t?dmy(t):'today')):'All dates'}
 
-/* ---------- view builders ---------- */
-function ledgerData(){
-  const city=val('fCity'),pid=val('fParty'),q=val('fQ').toLowerCase(),st=val('fStatus'),srt=val('fSort'),f=val('fFrom'),t=val('fTo');
-  let rows=S.parties.filter(p=>(!city||p.city===city)&&(!pid||p.id===pid));
-  if(q)rows=rows.filter(p=>(p.name+' '+p.city+' '+(p.phone||'')).toLowerCase().indexOf(q)>-1
-    ||billsOf(p.id).some(b=>((b.billNo||'')+' '+(b.biltyNo||'')+' '+(b.parcel||'')).toLowerCase().indexOf(q)>-1));
-  if(st)rows=rows.filter(p=>{const n=billsOf(p.id).length,b=balance(p.id);
-    return st==='none'?n===0:st==='due'?b>0:st==='zero'?(b===0&&n>0):st==='over'?b<0:true});
-  rows.sort((a,b)=>srt==='name'?a.name.localeCompare(b.name):srt==='city'?(a.city+a.name).localeCompare(b.city+b.name)
-    :srt==='val'?parcelVal(b.id)-parcelVal(a.id):srt==='dep'?paidOf(b.id)-paidOf(a.id):balance(b.id)-balance(a.id));
-  const D={title:'Ledger',sub:rangeTxt(f,t)+(city?' \u00B7 City '+city:'')+(q?' \u00B7 Search "'+val('fQ')+'"':'')+(st?' \u00B7 '+$('fStatus').selectedOptions[0].text:''),
-    headers:['Party','City','Parcels','Parcel value','Bill amount','Deposited','Parcel balance','Last deposit'],
-    aligns:['l','l','r','r','r','r','r','l'],ids:rows.map(p=>p.id),rowCls:[],rows:[]};
-  rows.forEach(p=>{
-    const bl=balance(p.id);
-    D.rowCls.push(bl===0&&billsOf(p.id).length?'settled':'');
-    D.rows.push([T(p.name),T(p.city||'\u2014'),T(billsOf(p.id).length,'','r'),T(money(parcelVal(p.id)),'','r'),
-      T(money(billAmt(p.id)),'','r'),T(money(paidOf(p.id)),'paid','r'),T(money(bl),cls(bl),'r'),T(dmy(lastDep(p.id)))]);
+/* ---------- Ledger Builder ---------- */
+function ledgerData(pid){
+  const f=val('lfFrom'),t=val('lfTo');
+  if(!pid){
+    return {title:'Ledger Statement',sub:'Select a medical to view statement',headers:['Date','Type','Details','Debit (Bill)','Credit (Paid)','Balance'],aligns:['l','l','l','r','r','r'],rows:[],ids:[],foot:null};
+  }
+  const bills=pBills(pid,f,t).map(b=>({type:'bill',date:b.date,obj:b,amt:itemVal(b)}));
+  const deps=pDeps(pid,f,t).map(d=>({type:'dep',date:d.date,obj:d,amt:+d.amount||0}));
+  const list=[...bills,...deps].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  let run=0,totB=0,totP=0;
+  const rows=[],ids=[];
+  list.forEach(x=>{
+    ids.push((x.type==='bill'?'b:':'d:')+x.obj.id);
+    if(x.type==='bill'){
+      run+=x.amt;totB+=x.amt;
+      rows.push([T(dmy(x.date)),T('Bill #'+(x.obj.no||'\u2014')),T(itemNames(x.obj)||(x.obj.note||'Bill entry')),T(money(x.amt),'','r'),T('\u2014','','r'),T(money(run),run>0?'due':'paid','r')]);
+    }else{
+      run-=x.amt;totP+=x.amt;
+      rows.push([T(dmy(x.date)),T(x.obj.mode||'Payment'),T(x.obj.note||'Payment received'),T('\u2014','','r'),T(money(x.amt),'paid','r'),T(money(run),run>0?'due':'paid','r')]);
+    }
   });
-  const tv=rows.reduce((s,p)=>s+parcelVal(p.id),0),ta=rows.reduce((s,p)=>s+billAmt(p.id),0),tp=rows.reduce((s,p)=>s+paidOf(p.id),0),
-    tc=rows.reduce((s,p)=>s+billsOf(p.id).length,0);
-  D.foot=[T('Total, '+rows.length+' part'+(rows.length===1?'y':'ies')),T(''),T(tc,'','r'),T(money(tv),'','r'),T(money(ta),'','r'),T(money(tp),'paid','r'),T(money(tv-tp),cls(tv-tp),'r'),T('')];
-  D.sums=[['Parties',rows.length],['Parcel value',money(tv)],['Bill amount',money(ta)],['Deposited',money(tp),'paid'],['Parcel balance',money(tv-tp),cls(tv-tp)]];
-  return D;
-}
-function billsData(){
-  const q=val('bfQ').toLowerCase(),city=val('bfCity'),pid=val('bfParty'),f=val('bfFrom'),t=val('bfTo'),srt=val('bfSort');
-  let rows=S.bills.filter(b=>{const p=party(b.partyId);
-    return (!city||p.city===city)&&(!pid||b.partyId===pid)&&inRange(b.date,f,t)
-      &&(!q||((b.billNo||'')+' '+(b.biltyNo||'')+' '+(b.parcel||'')+' '+p.name+' '+p.city).toLowerCase().indexOf(q)>-1)});
-  rows.sort((a,b)=>srt==='dateA'?(a.date||'').localeCompare(b.date||''):srt==='valD'?b.value-a.value
-    :srt==='amtD'?b.amount-a.amount:srt==='party'?party(a.partyId).name.localeCompare(party(b.partyId).name):(b.date||'').localeCompare(a.date||''));
-  const D={title:'Bills',sub:rangeTxt(f,t)+(city?' \u00B7 City '+city:'')+(q?' \u00B7 Search "'+val('bfQ')+'"':''),
-    headers:['Date','Party','City','Bill no.','Bilty','Parcel','Parcel value','Bill amount','Edit'],
-    aligns:['l','l','l','l','l','l','r','r','r'],ids:rows.map(b=>b.id),
-    rows:rows.map(b=>{const p=party(b.partyId);
-      return [T(dmy(b.date)),T(p.name),T(p.city),T(b.billNo),T(b.biltyNo||'\u2014'),T(b.parcel||'\u2014'),T(money(b.value),'','r'),T(money(b.amount),'','r')]}),
-    rowCls:rows.map(b=>editBill===b.id?'hl':'')};
-  const tv=rows.reduce((s,b)=>s+ +b.value,0),ta=rows.reduce((s,b)=>s+ +b.amount,0);
-  D.foot=[T('Total, '+rows.length+' bill'+(rows.length===1?'':'s')),T(''),T(''),T(''),T(''),T(''),T(money(tv),'','r'),T(money(ta),'','r')];
-  D.headers=D.headers.slice(0,8);D.aligns=D.aligns.slice(0,8);
-  D.sums=[['Bills',rows.length],['Parcel value',money(tv)],['Bill amount',money(ta)]];
-  return D;
-}
-function depsData(){
-  const q=val('dfQ').toLowerCase(),city=val('dfCity'),pid=val('dfParty'),mode=val('dfMode'),f=val('dfFrom'),t=val('dfTo'),srt=val('dfSort');
-  let rows=S.deposits.filter(d=>{const p=party(d.partyId);
-    return (!city||p.city===city)&&(!pid||d.partyId===pid)&&(!mode||d.mode===mode)&&inRange(d.date,f,t)
-      &&(!q||((d.note||'')+' '+(d.mode||'')+' '+p.name+' '+p.city).toLowerCase().indexOf(q)>-1)});
-  rows.sort((a,b)=>srt==='dateA'?(a.date||'').localeCompare(b.date||''):srt==='amtD'?b.amount-a.amount
-    :srt==='party'?party(a.partyId).name.localeCompare(party(b.partyId).name):(b.date||'').localeCompare(a.date||''));
-  const D={title:'Deposits',sub:rangeTxt(f,t)+(city?' \u00B7 City '+city:'')+(mode?' \u00B7 '+mode:'')+(q?' \u00B7 Search "'+val('dfQ')+'"':''),
-    headers:['Date','Party','City','Mode','Note','Amount'],aligns:['l','l','l','l','l','r'],ids:rows.map(d=>d.id),
-    rows:rows.map(d=>{const p=party(d.partyId);
-      return [T(dmy(d.date)),T(p.name),T(p.city),T(d.mode),T(d.note||'\u2014'),T(money(d.amount),'paid','r')]}),
-    rowCls:rows.map(d=>editDep===d.id?'hl':'')};
-  const tp=rows.reduce((s,d)=>s+ +d.amount,0);
-  D.foot=[T('Total, '+rows.length+' deposit'+(rows.length===1?'':'s')),T(''),T(''),T(''),T(''),T(money(tp),'paid','r')];
-  D.sums=[['Deposits',rows.length],['Total deposited',money(tp),'paid']];
-  return D;
-}
-function partiesData(){
-  const q=val('pfQ').toLowerCase(),city=val('pfCity'),srt=val('pfSort');
-  let rows=S.parties.filter(p=>(!city||p.city===city)&&(!q||(p.name+' '+p.city+' '+(p.phone||'')).toLowerCase().indexOf(q)>-1));
-  rows.sort((a,b)=>srt==='city'?(a.city+a.name).localeCompare(b.city+b.name):srt==='bal'?balance(b.id)-balance(a.id)
-    :srt==='bills'?billsOf(b.id).length-billsOf(a.id).length:a.name.localeCompare(b.name));
-  const D={title:'Party directory',sub:(city?'City '+city:'All cities')+(q?' \u00B7 Search "'+val('pfQ')+'"':''),
-    headers:['Name','City','Phone','Bills','Deposits','Parcel value','Bill amount','Parcel balance'],
-    aligns:['l','l','l','r','r','r','r','r'],ids:rows.map(p=>p.id),rowCls:rows.map(p=>editParty===p.id?'hl':''),
-    rows:rows.map(p=>[T(p.name),T(p.city),T(p.phone||'\u2014'),T(billsOf(p.id).length,'','r'),T(depsOf(p.id).length,'','r'),
-      T(money(parcelVal(p.id)),'','r'),T(money(billAmt(p.id)),'','r'),T(money(balance(p.id)),cls(balance(p.id)),'r')])};
-  const tv=rows.reduce((s,p)=>s+parcelVal(p.id),0),ta=rows.reduce((s,p)=>s+billAmt(p.id),0),tb=rows.reduce((s,p)=>s+balance(p.id),0);
-  D.foot=[T('Total, '+rows.length+' part'+(rows.length===1?'y':'ies')),T(''),T(''),T(''),T(''),T(money(tv),'','r'),T(money(ta),'','r'),T(money(tb),cls(tb),'r')];
+  const D={title:'Ledger Statement \u2014 '+party(pid).name,sub:rangeTxt(f,t)+(party(pid).city?' \u00B7 '+party(pid).city:''),
+    headers:['Date','Type','Details','Debit (Bill)','Credit (Paid)','Balance'],aligns:['l','l','l','r','r','r'],rows,ids};
+  D.foot=[T('Total Transactions: '+list.length),T(''),T(''),T(money(totB),'','r'),T(money(totP),'paid','r'),T(money(run),run>0?'due':'paid','r')];
+  D.sums=[['Total Billed',money(totB)],['Total Received',money(totP),'paid'],['Outstanding Balance',money(run),run>0?'due':'paid']];
   return D;
 }
 
+function ledgerDetail(){
+  const pid=val('lfParty');
+  V.ledger=ledgerData(pid);
+  paint('tLedger',V.ledger,{act:'l',empty:pid?'No ledger transactions recorded in this period.':'Please select a medical above to view its statement.'});
+  $('ledgerTot').innerHTML=V.ledger.sums?fmtSum(V.ledger.sums):'';
+}
+
+function partiesData(){
+  const q=val('pfQ').toLowerCase(),city=val('pfCity'),srt=val('pfSort'),f=val('pfFrom'),t=val('pfTo');
+  let rows=S.parties.filter(p=>(!city||p.city===city)&&(!q||(p.name+' '+p.city+' '+(p.phone||'')).toLowerCase().indexOf(q)>-1));
+  rows.sort((a,b)=>srt==='name'?a.name.localeCompare(b.name):srt==='city'?(a.city+a.name).localeCompare(b.city+b.name)
+    :srt==='balD'?pBalance(b.id,f,t)-pBalance(a.id,f,t):srt==='rxD'?pRx(b.id,f,t).length-pRx(a.id,f,t).length:pValue(b.id,f,t)-pValue(a.id,f,t));
+  const D={title:'Medical directory',sub:rangeTxt(f,t)+(city?' \u00B7 City '+city:'')+(q?' \u00B7 Search "'+val('pfQ')+'"':''),
+    headers:['Name','City','Phone','Prescribed Value','Billed (Dr)','Paid (Cr)','Balance Due'],
+    aligns:['l','l','l','r','r','r','r'],ids:rows.map(p=>p.id),rowCls:rows.map(p=>editParty===p.id?'hl':''),
+    rows:rows.map(p=>[T(p.name),T(p.city||'\u2014'),T(p.phone||'\u2014'),
+      T(money(pValue(p.id,f,t)),'','r'),T(money(pBilled(p.id,f,t)),'','r'),T(money(pPaid(p.id,f,t)),'paid','r'),
+      T(money(pBalance(p.id,f,t)),pBalance(p.id,f,t)>0?'due':pBalance(p.id,f,t)<0?'paid':'','r')])};
+  const tv=rows.reduce((s,p)=>s+pValue(p.id,f,t),0),tb=rows.reduce((s,p)=>s+pBilled(p.id,f,t),0),
+    tp=rows.reduce((s,p)=>s+pPaid(p.id,f,t),0),bal=tb-tp;
+  D.foot=[T('Total, '+rows.length+' medicals'),T(''),T(''),T(money(tv),'','r'),T(money(tb),'','r'),T(money(tp),'paid','r'),T(money(bal),bal>0?'due':'paid','r')];
+  D.sums=[['Medicals',rows.length],['Prescribed Value',money(tv)],['Total Billed',money(tb)],['Total Paid',money(tp),'paid'],['Net Balance',money(bal),bal>0?'due':'paid']];
+  return D;
+}
+function partyRxData(pid){
+  const f=val('pfFrom'),t=val('pfTo');
+  const rows=pRx(pid,f,t).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const D={title:'Medical statement \u2014 '+party(pid).name,sub:rangeTxt(f,t),
+    headers:['Date','Doctor','Medicine','Qty','Rate','Amount'],aligns:['l','l','l','r','r','r'],ids:[],rows:[]};
+  rows.forEach(r=>(r.lines||[]).forEach((l,li)=>{D.ids.push(r.id);
+    D.rows.push([T(li?'':dmy(r.date)),T(li?'':doctor(r.doctorId).name),T(l.name),
+      T(l.qty||'\u2014','','r'),T(+l.rate?money(l.rate):'\u2014','','r'),T(money(l.amount),'','r')])}));
+  D.foot=[T('Total, '+rows.length+' entr'+(rows.length===1?'y':'ies')),T(''),T(''),T(pQty(pid,f,t),'','r'),T(''),T(money(pValue(pid,f,t)),'','r')];
+  return D;
+}
+function itemsData(){
+  const q=val('ifQ').toLowerCase(),srt=val('ifSort'),f=val('ifFrom'),t=val('ifTo');
+  let rows=S.items.filter(i=>!q||(i.name+' '+(i.pack||'')+' '+(i.note||'')).toLowerCase().indexOf(q)>-1);
+  const B={},X={};
+  rows.forEach(i=>{B[i.id]=billedOf(i.name,f,t);X[i.id]=scriptedOf(i.name,f,t)});
+  rows.sort((a,b)=>srt==='name'?a.name.localeCompare(b.name):srt==='qtyD'?B[b.id].q-B[a.id].q
+    :srt==='rxD'?X[b.id].q-X[a.id].q:B[b.id].v-B[a.id].v);
+  const D={title:'Item collection',sub:rangeTxt(f,t)+(q?' \u00B7 Search "'+val('ifQ')+'"':''),
+    headers:['Item','Pack / unit','Default rate','Company / note','Bills','Billed qty','Billed value','Prescribed qty','Prescribed value'],
+    aligns:['l','l','r','l','r','r','r','r','r'],ids:rows.map(i=>i.id),rowCls:rows.map(i=>editItem===i.id?'hl':''),
+    rows:rows.map(i=>[T(i.name),T(i.pack||'\u2014'),T(+i.rate?money(i.rate):'\u2014','','r'),T(i.note||'\u2014'),
+      T(B[i.id].n||'\u2014','','r'),T(B[i.id].q||'\u2014','','r'),T(money(B[i.id].v),'','r'),
+      T(X[i.id].q||'\u2014','','r'),T(money(X[i.id].v),'paid','r')])};
+  const bq=rows.reduce((s,i)=>s+B[i.id].q,0),bv=rows.reduce((s,i)=>s+B[i.id].v,0),
+    xq=rows.reduce((s,i)=>s+X[i.id].q,0),xv=rows.reduce((s,i)=>s+X[i.id].v,0);
+  D.foot=[T('Total, '+rows.length+' item'+(rows.length===1?'':'s')),T(''),T(''),T(''),T(''),
+    T(bq,'','r'),T(money(bv),'','r'),T(xq,'','r'),T(money(xv),'paid','r')];
+  D.sums=[['Items',rows.length],['Billed qty',bq],['Billed value',money(bv)],['Prescribed value',money(xv),'paid']];
+  return D;
+}
 function doctorsData(){
   const q=val('kfQ').toLowerCase(),city=val('kfCity'),srt=val('kfSort'),f=val('kfFrom'),t=val('kfTo');
   let rows=S.doctors.filter(d=>(!city||d.city===city)&&(!q||(d.name+' '+(d.speciality||'')+' '+(d.clinic||'')+' '+(d.city||'')+' '+(d.phone||'')).toLowerCase().indexOf(q)>-1));
@@ -720,45 +909,29 @@ function paintTargets(D){
 }
 
 function fillSelects(){
+  $('itemCat').innerHTML=itemCatalog().map(x=>'<option value="'+esc(x)+'"></option>').join('');
   const sorted=S.parties.slice().sort((a,b)=>a.name.localeCompare(b.name));
   const opts=sorted.map(p=>'<option value="'+p.id+'">'+esc(p.name)+' \u2014 '+esc(p.city)+'</option>').join('');
-  ['bParty','dParty'].forEach(id=>{const el=$(id),v=el.value;el.innerHTML='<option value="">Select party</option>'+opts;el.value=v;});
-  {const el=$('rParty'),v=el.value;el.innerHTML='<option value="">Select medical</option>'+opts;el.value=v;}
+  ['rParty','bParty','dParty'].forEach(id=>{const el=$(id),v=el.value;el.innerHTML='<option value="">Select medical</option>'+opts;el.value=v;});
+  {const el=$('lfParty'),v=el.value;el.innerHTML='<option value="">Select a medical to view statement</option>'+opts;el.value=v;}
   const docs=S.doctors.slice().sort((a,b)=>a.name.localeCompare(b.name));
   const dopts=docs.map(d=>'<option value="'+d.id+'">'+esc(d.name)+(d.city?' \u2014 '+esc(d.city):'')+'</option>').join('');
   ['rDoc','gDoc'].forEach(id=>{const el=$(id),v=el.value;el.innerHTML='<option value="">Select doctor</option>'+dopts;el.value=v;});
-  ['rfDoc','gfDoc'].forEach(id=>{const el=$(id),v=el.value;el.innerHTML='<option value="">All doctors</option>'+dopts;
-    el.value=docs.some(d=>d.id===v)?v:'';});
-  {const el=$('rfParty'),v=el.value;el.innerHTML='<option value="">All medicals</option>'+
-    sorted.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');el.value=sorted.some(p=>p.id===v)?v:'';}
-  {const dc=[...new Set(S.doctors.map(d=>d.city).filter(Boolean))].sort(),el=$('kfCity'),v=el.value;
-    el.innerHTML='<option value="">All cities</option>'+dc.map(c=>'<option>'+esc(c)+'</option>').join('');
-    el.value=dc.indexOf(v)>-1?v:'';}
+  ['rfDoc','gfDoc'].forEach(id=>{const el=$(id),v=el.value;el.innerHTML='<option value="">All doctors</option>'+dopts;el.value=docs.some(d=>d.id===v)?v:'';});
+  {const el=$('rfParty'),v=el.value;el.innerHTML='<option value="">All medicals</option>'+sorted.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');el.value=sorted.some(p=>p.id===v)?v:'';}
+  {const dc=[...new Set(S.doctors.map(d=>d.city).filter(Boolean))].sort(),el=$('kfCity'),v=el.value;el.innerHTML='<option value="">All cities</option>'+dc.map(c=>'<option>'+esc(c)+'</option>').join('');el.value=dc.indexOf(v)>-1?v:'';}
   const cities=[...new Set(S.parties.map(p=>p.city).filter(Boolean))].sort();
-  ['fCity','bfCity','dfCity','pfCity','rfCity'].forEach(id=>{const el=$(id),v=el.value;
-    el.innerHTML='<option value="">All cities</option>'+cities.map(c=>'<option>'+esc(c)+'</option>').join('');
-    el.value=cities.indexOf(v)>-1?v:'';});
-  [['fParty','fCity'],['bfParty','bfCity'],['dfParty','dfCity']].forEach(([pi,ci])=>{
-    const el=$(pi),v=el.value,list=sorted.filter(p=>!val(ci)||p.city===val(ci));
-    el.innerHTML='<option value="">All parties</option>'+list.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
-    el.value=list.some(p=>p.id===v)?v:'';});
-  const modes=[...new Set(S.deposits.map(d=>d.mode).filter(Boolean))].sort(),dm=$('dfMode'),mv=dm.value;
-  dm.innerHTML='<option value="">All modes</option>'+modes.map(m=>'<option>'+esc(m)+'</option>').join('');
-  dm.value=modes.indexOf(mv)>-1?mv:'';
+  ['pfCity','rfCity'].forEach(id=>{const el=$(id),v=el.value;el.innerHTML='<option value="">All cities</option>'+cities.map(c=>'<option>'+esc(c)+'</option>').join('');el.value=cities.indexOf(v)>-1?v:'';});
 }
 
 function render(){
   fillSelects();
-  V.ledger=ledgerData();paint('tLedger',V.ledger,{clickId:1,empty:'No parties match these filters.'});
-  $('totals').innerHTML=fmtSum(V.ledger.sums);
-  $('fCount').textContent=V.ledger.rows.length+' of '+S.parties.length+' parties';
+  ledgerDetail();
+  V.parties=partiesData();paint('tAllParties',V.parties,{act:'p',clickId:1,empty:'No medicals match these filters.'});
   detail();
-  V.bills=billsData();paint('tAllBills',V.bills,{act:'b',empty:'No bills match these filters.'});
-  $('bfCount').textContent=V.bills.rows.length+' of '+S.bills.length+' bills';
-  V.deps=depsData();paint('tAllDeps',V.deps,{act:'d',empty:'No deposits match these filters.'});
-  $('dfCount').textContent=V.deps.rows.length+' of '+S.deposits.length+' deposits';
-  V.parties=partiesData();paint('tAllParties',V.parties,{act:'p',empty:'No parties match these filters.'});
-  $('pfCount').textContent=V.parties.rows.length+' of '+S.parties.length+' parties';
+  $('pfCount').textContent=V.parties.rows.length+' of '+S.parties.length+' medicals';
+  V.items=itemsData();paint('tItems',V.items,{act:'i',empty:'No items yet. Add one above, or just type names into a bill.'});
+  $('ifCount').textContent=V.items.rows.length+' of '+S.items.length+' items';
   V.doctors=doctorsData();paint('tDocs',V.doctors,{act:'k',clickId:1,empty:'No doctors match these filters.'});
   $('kfCount').textContent=V.doctors.rows.length+' of '+S.doctors.length+' doctors';
   docDetail();
@@ -767,9 +940,8 @@ function render(){
   V.rxlines=rxLinesData();
   V.targets=targetsData();paintTargets(V.targets);
   $('gfCount').textContent=V.targets.cards.length+' of '+S.targets.length+' targets';
-  const bal=S.parties.reduce((s,p)=>s+balance(p.id),0);
-  $('dataTot').innerHTML=fmtSum([['Parties',S.parties.length],['Bills',S.bills.length],['Deposits',S.deposits.length],
-    ['Parcel balance',money(bal),cls(bal)],['Doctors',S.doctors.length],['Prescriptions',S.rx.length],['Targets',S.targets.length]]);
+  $('dataTot').innerHTML=fmtSum([['Medicals',S.parties.length],['Items',S.items.length],['Doctors',S.doctors.length],
+    ['Bills',S.bills.length],['Payments',S.deposits.length],['Prescriptions',S.rx.length],['Targets',S.targets.length]]);
 }
 
 function docDetail(){
@@ -798,93 +970,174 @@ function detail(){
   const c=$('detailCard');
   if(!openParty||!S.parties.some(p=>p.id===openParty)){c.style.display='none';return}
   c.style.display='';
-  const p=party(openParty);
+  const p=party(openParty),f=val('pfFrom'),t=val('pfTo');
   $('detailName').textContent=p.name+' \u00B7 '+(p.city||'\u2014')+(p.phone?' \u00B7 '+p.phone:'');
-  $('tBills').innerHTML=billsOf(openParty).sort((a,b)=>(b.date||'').localeCompare(a.date||''))
-    .map(b=>'<tr><td class="num">'+dmy(b.date)+'</td><td class="num">'+esc(b.billNo)+'</td><td class="num">'+esc(b.biltyNo||'\u2014')+'</td>'+
-      '<td class="r num">'+money(b.value)+'</td><td class="r num">'+money(b.amount)+'</td>'+
-      '<td class="r nowrap act-col"><button class="ico e" data-eb="'+b.id+'">\u270E</button><button class="ico d" data-db="'+b.id+'">\u2715</button></td></tr>').join('')
-    ||'<tr><td colspan="6" class="empty">No bills in this date range.</td></tr>';
-  $('tDeps').innerHTML=depsOf(openParty).sort((a,b)=>(b.date||'').localeCompare(a.date||''))
-    .map(d=>'<tr><td class="num">'+dmy(d.date)+'</td><td>'+esc(d.mode)+'</td><td>'+esc(d.note||'\u2014')+'</td>'+
-      '<td class="r num paid">'+money(d.amount)+'</td><td class="r nowrap act-col"><button class="ico e" data-ed="'+d.id+'">\u270E</button><button class="ico d" data-dd="'+d.id+'">\u2715</button></td></tr>').join('')
-    ||'<tr><td colspan="5" class="empty">No deposits in this date range.</td></tr>';
-  const b=balance(openParty);
-  $('detailTot').innerHTML=fmtSum([['Parcel value',money(parcelVal(openParty))],['Bill amount',money(billAmt(openParty))],
-    ['Deposited',money(paidOf(openParty)),'paid'],['Parcel balance',money(b),cls(b)],['Last deposit on',dmy(lastDep(openParty))]]);
+  paint('tPartyRx',partyRxData(openParty),{empty:'Nothing prescribed to this medical in this date range.'});
+  $('detailTot').innerHTML=fmtSum([['Entries',pRx(openParty,f,t).length],['Doctors',pDocs(openParty,f,t)],
+    ['Qty',pQty(openParty,f,t)],['Value prescribed',money(pValue(openParty,f,t))],
+    ['Balance Due',money(pBalance(openParty,f,t)),pBalance(openParty,f,t)>0?'due':'paid']]);
 }
 
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
-  ['ledger','bills','deposits','parties','doctors','rx','targets','data'].forEach(t=>$('v-'+t).style.display=(t===b.dataset.t)?'':'none');
+  ['ledger','parties','items','doctors','rx','targets','data'].forEach(t=>$('v-'+t).style.display=(t===b.dataset.t)?'':'none');
 });
 
-/* ---------- filters ---------- */
-const LF=['fCity','fParty','fQ','fStatus','fFrom','fTo','fSort','bfQ','bfCity','bfParty','bfFrom','bfTo','bfSort',
-  'dfQ','dfCity','dfParty','dfMode','dfFrom','dfTo','dfSort','pfQ','pfCity','pfSort',
-  'kfQ','kfCity','kfFrom','kfTo','kfSort','rfQ','rfDoc','rfParty','rfCity','rfFrom','rfTo','rfSort','gfDoc','gfShow'];
-LF.forEach(id=>{const el=$(id);el.oninput=render;el.onchange=render});
+const LF=['pfQ','pfCity','pfFrom','pfTo','pfSort',
+  'ifQ','ifFrom','ifTo','ifSort','kfQ','kfCity','kfFrom','kfTo','kfSort',
+  'rfQ','rfDoc','rfParty','rfCity','rfFrom','rfTo','rfSort','gfDoc','gfShow','lfParty','lfFrom','lfTo'];
+LF.forEach(id=>{const el=$(id);if(el){el.oninput=render;el.onchange=render}});
 function clearF(ids){ids.forEach(i=>{const el=$(i);el.value=el.tagName==='SELECT'?el.options[0].value:''});render()}
-$('fClear').onclick=()=>{openParty=null;clearF(['fCity','fParty','fQ','fStatus','fFrom','fTo'])};
-$('bfClear').onclick=()=>clearF(['bfQ','bfCity','bfParty','bfFrom','bfTo']);
-$('dfClear').onclick=()=>clearF(['dfQ','dfCity','dfParty','dfMode','dfFrom','dfTo']);
-$('pfClear').onclick=()=>clearF(['pfQ','pfCity']);
+$('pfClear').onclick=()=>{openParty=null;clearF(['pfQ','pfCity','pfFrom','pfTo'])};
+$('ifClear').onclick=()=>clearF(['ifQ','ifFrom','ifTo']);
 $('kfClear').onclick=()=>{openDoc=null;clearF(['kfQ','kfCity','kfFrom','kfTo'])};
 $('rfClear').onclick=()=>clearF(['rfQ','rfDoc','rfParty','rfCity','rfFrom','rfTo']);
 $('gfClear').onclick=()=>clearF(['gfDoc','gfShow']);
-$('tLedger').onclick=e=>{const tr=e.target.closest('tr[data-p]');if(!tr)return;openParty=tr.dataset.p;detail();$('detailCard').scrollIntoView({behavior:'smooth',block:'start'})};
-$('tDocs').onclick=e=>{if(e.target.closest('button'))return;const tr=e.target.closest('tr[data-p]');if(!tr)return;
-  openDoc=tr.dataset.p;docDetail();$('docDetail').scrollIntoView({behavior:'smooth',block:'start'})};
+$('lfClear').onclick=()=>clearF(['lfParty','lfFrom','lfTo']);
 
-/* ---------- edit / delete ---------- */
+$('tAllParties').onclick=e=>{
+  if(e.target.closest('button'))return;
+  const tr=e.target.closest('tr[data-p]');if(!tr)return;
+  $('lfParty').value=tr.dataset.p;tab('ledger');render();
+};
+$('tDocs').onclick=e=>{
+  if(e.target.closest('button'))return;
+  const tr=e.target.closest('tr[data-p]');if(!tr)return;
+  openDoc=tr.dataset.p;docDetail();$('docDetail').scrollIntoView({behavior:'smooth',block:'start'});
+};
+
+/* ---------- Bills & Payments form helpers ---------- */
+function addBillLine(l){
+  l=l||{};
+  const d=document.createElement('div');d.className='line';
+  d.innerHTML='<div class="f" style="flex:1;min-width:200px"><label>Item</label><input data-k="name" list="itemCat" placeholder="Item name"></div>'+
+    '<div class="f"><label>Qty</label><input data-k="qty" class="num" inputmode="numeric" style="min-width:80px"></div>'+
+    '<div class="f"><label>Rate &#8377;</label><input data-k="rate" class="num" inputmode="numeric" style="min-width:90px"></div>'+
+    '<div class="f"><label>Amount &#8377;</label><input data-k="amount" class="num" inputmode="numeric" style="min-width:110px"></div>'+
+    '<button class="ico d" data-rmline="1" title="Remove line">\u2715</button>';
+  ['name','qty','rate','amount'].forEach(k=>{const v=l[k];if(v!==undefined&&v!==0&&v!=='')d.querySelector('[data-k="'+k+'"]').value=v});
+  $('bLines').appendChild(d);
+  return d;
+}
+function readBillLines(){
+  return [...$('bLines').querySelectorAll('.line')].map(d=>{
+    const g=k=>d.querySelector('[data-k="'+k+'"]').value.trim();
+    return {name:g('name'),qty:+g('qty')||0,rate:+g('rate')||0,amount:+g('amount')||0};
+  }).filter(l=>l.name||l.amount);
+}
+function billLineTot(){$('bLineTot').textContent=money(readBillLines().reduce((s,l)=>s+ +l.amount,0))}
+$('bLines').addEventListener('input',e=>{
+  const k=e.target.dataset.k;if(!k)return;
+  const row=e.target.closest('.line'),g=n=>row.querySelector('[data-k="'+n+'"]');
+  if(k==='name'){const hit=findItem(e.target.value);if(hit&&+hit.rate&&!g('rate').value)g('rate').value=hit.rate;}
+  const q=+g('qty').value||0,r=+g('rate').value||0;
+  if(q&&r&&(k!=='name'||!g('amount').value))g('amount').value=q*r;
+  billLineTot();
+});
+$('bLines').addEventListener('click',e=>{
+  if(!e.target.dataset.rmline)return;
+  const rows=$('bLines').querySelectorAll('.line');
+  if(rows.length<=1){e.target.closest('.line').querySelectorAll('input').forEach(i=>i.value='')}
+  else e.target.closest('.line').remove();
+  billLineTot();
+});
+$('bAddLine').onclick=()=>{addBillLine().querySelector('input').focus()};
+
 function loadBill(id){
   const b=S.bills.find(x=>x.id===id);if(!b)return;
-  editBill=id;
-  $('bParty').value=b.partyId;$('bDate').value=b.date||today();$('bNo').value=b.billNo||'';
-  $('bBilty').value=b.biltyNo||'';$('bParcel').value=b.parcel||'';$('bVal').value=b.value||'';$('bAmt').value=b.amount||'';
-  $('billFormTitle').textContent='Editing bill '+(b.billNo||'');$('bSave').textContent='Update bill';
-  $('bCancel').style.display='';$('billCard').classList.add('editing');
-  tab('bills');$('billCard').scrollIntoView({behavior:'smooth',block:'start'});render();
+  editBill=id;$('bParty').value=b.partyId;$('bNo').value=b.no||'';$('bDate').value=b.date||today();$('bNote').value=b.note||'';
+  $('bLines').innerHTML='';(b.items&&b.items.length?b.items:[{}]).forEach(addBillLine);billLineTot();
+  $('billFormTitle').textContent='Editing bill #'+(b.no||'\u2014');
+  $('bSave').textContent='Update bill';$('bCancel').style.display='';$('billCard').classList.add('editing');
+  tab('ledger');$('billCard').scrollIntoView({behavior:'smooth',block:'start'});render();
 }
 function clearBill(){
-  editBill=null;['bNo','bBilty','bParcel','bVal','bAmt'].forEach(i=>$(i).value='');
-  $('billFormTitle').textContent='New bill';$('bSave').textContent='Save bill';
+  editBill=null;$('bNo').value='';$('bNote').value='';$('bLines').innerHTML='';addBillLine();billLineTot();
+  $('billFormTitle').textContent='New bill (debit)';$('bSave').textContent='Save bill';
   $('bCancel').style.display='none';$('billCard').classList.remove('editing');
 }
+
 function loadDep(id){
   const d=S.deposits.find(x=>x.id===id);if(!d)return;
-  editDep=id;
-  $('dParty').value=d.partyId;$('dDate').value=d.date||today();$('dAmt').value=d.amount||'';$('dMode').value=d.mode||'Online';$('dNote').value=d.note||'';
-  $('depFormTitle').textContent='Editing deposit of '+money(d.amount)+' dated '+dmy(d.date);$('dSave').textContent='Update deposit';
+  editDep=id;$('dParty').value=d.partyId;$('dAmt').value=d.amount;$('dDate').value=d.date||today();$('dMode').value=d.mode||'Cash';$('dNote').value=d.note||'';
+  $('depFormTitle').textContent='Editing payment';$('dSave').textContent='Update payment';
   $('dCancel').style.display='';$('depCard').classList.add('editing');
-  tab('deposits');$('depCard').scrollIntoView({behavior:'smooth',block:'start'});render();
+  tab('ledger');$('depCard').scrollIntoView({behavior:'smooth',block:'start'});render();
 }
 function clearDep(){
   editDep=null;$('dAmt').value='';$('dNote').value='';
-  $('depFormTitle').textContent='New deposit';$('dSave').textContent='Save deposit';
+  $('depFormTitle').textContent='New payment / deposit (credit)';$('dSave').textContent='Save payment';
   $('dCancel').style.display='none';$('depCard').classList.remove('editing');
 }
+
+$('bSave').onclick=()=>{
+  const partyId=val('bParty'),items=readBillLines();
+  if(!partyId)return alert('Pick a medical.');
+  if(!items.length)return alert('Add at least one item to the bill.');
+  absorbItems(items);
+  const rec={partyId,no:val('bNo'),date:$('bDate').value||today(),note:val('bNote'),items};
+  if(editBill)Object.assign(S.bills.find(x=>x.id===editBill),rec);
+  else S.bills.push(Object.assign({id:uid()},rec));
+  if(!$('lfParty').value)$('lfParty').value=partyId;
+  clearBill();save();
+};
+$('bCancel').onclick=()=>{clearBill();render()};
+
+$('dSave').onclick=()=>{
+  const partyId=val('dParty'),amount=+$('dAmt').value;
+  if(!partyId)return alert('Pick a medical.');
+  if(!amount||amount<=0)return alert('Enter a payment amount.');
+  const rec={partyId,amount,date:$('dDate').value||today(),mode:val('dMode'),note:val('dNote')};
+  if(editDep)Object.assign(S.deposits.find(x=>x.id===editDep),rec);
+  else S.deposits.push(Object.assign({id:uid()},rec));
+  if(!$('lfParty').value)$('lfParty').value=partyId;
+  clearDep();save();
+};
+$('dCancel').onclick=()=>{clearDep();render()};
+
+/* ---------- edit / delete ---------- */
 function loadParty(id){
   const p=S.parties.find(x=>x.id===id);if(!p)return;
   editParty=id;$('pName').value=p.name;$('pCity').value=p.city;$('pPhone').value=p.phone||'';
-  $('partyFormTitle').textContent='Editing '+p.name;$('pSave').textContent='Update party';
+  $('partyFormTitle').textContent='Editing '+p.name;$('pSave').textContent='Update medical';
   $('pCancel').style.display='';$('partyCard').classList.add('editing');
   tab('parties');$('partyCard').scrollIntoView({behavior:'smooth',block:'start'});render();
 }
 function clearParty(){
   editParty=null;$('pName').value=$('pCity').value=$('pPhone').value='';
-  $('partyFormTitle').textContent='New party (one time setup)';$('pSave').textContent='Save party';
+  $('partyFormTitle').textContent='New medical (one time setup)';$('pSave').textContent='Save medical';
   $('pCancel').style.display='none';$('partyCard').classList.remove('editing');
 }
 function removeParty(id){
   const p=S.parties.find(x=>x.id===id);if(!p)return;
-  const nb=S.bills.filter(b=>b.partyId===id).length,nd=S.deposits.filter(d=>d.partyId===id).length;
-  if(!confirm('Delete '+p.name+' ('+p.city+') along with '+nb+' bill(s) and '+nd+' deposit(s)?\nThis cannot be undone.'))return;
+  const nr=S.rx.filter(r=>r.partyId===id).length;
+  if(!confirm('Delete '+p.name+' ('+p.city+') along with all bills, payments and prescriptions?'))return;
+  S.rx=S.rx.filter(r=>r.partyId!==id);
   S.bills=S.bills.filter(b=>b.partyId!==id);
   S.deposits=S.deposits.filter(d=>d.partyId!==id);
   S.parties=S.parties.filter(x=>x.id!==id);
   if(openParty===id)openParty=null;
   if(editParty===id)clearParty();
+  if($('lfParty').value===id)$('lfParty').value='';
+  save();
+}
+function loadItem(id){
+  const i=S.items.find(x=>x.id===id);if(!i)return;
+  editItem=id;$('iName').value=i.name;$('iPack').value=i.pack||'';$('iRate').value=i.rate||'';$('iNote').value=i.note||'';
+  $('itemFormTitle').textContent='Editing '+i.name;$('iSave').textContent='Update item';
+  $('iCancel').style.display='';$('itemCard').classList.add('editing');
+  tab('items');$('itemCard').scrollIntoView({behavior:'smooth',block:'start'});render();
+}
+function clearItem(){
+  editItem=null;['iName','iPack','iRate','iNote'].forEach(x=>$(x).value='');
+  $('itemFormTitle').textContent='New item';$('iSave').textContent='Save item';
+  $('iCancel').style.display='none';$('itemCard').classList.remove('editing');
+}
+function removeItem(id){
+  const i=S.items.find(x=>x.id===id);if(!i)return;
+  if(!confirm('Take '+i.name+' out of the item collection?'))return;
+  S.items=S.items.filter(v=>v.id!==id);
+  if(editItem===id)clearItem();
   save();
 }
 function loadDoc(id){
@@ -902,21 +1155,18 @@ function clearDoc(){
 }
 function removeDoc(id){
   const d=S.doctors.find(x=>x.id===id);if(!d)return;
-  const nr=S.rx.filter(r=>r.doctorId===id).length,nt=S.targets.filter(t=>t.doctorId===id).length;
-  if(!confirm('Delete '+d.name+' along with '+nr+' prescription entr'+(nr===1?'y':'ies')+' and '+nt+' target'+(nt===1?'':'s')+'?\nThis cannot be undone.'))return;
+  if(!confirm('Delete '+d.name+' along with prescriptions and targets?'))return;
   S.rx=S.rx.filter(r=>r.doctorId!==id);S.targets=S.targets.filter(t=>t.doctorId!==id);
   S.doctors=S.doctors.filter(x=>x.id!==id);
   if(openDoc===id)openDoc=null;
   if(editDoc===id)clearDoc();
-  if(editRx&&!S.rx.some(r=>r.id===editRx))clearRx();
-  if(editTg&&!S.targets.some(t=>t.id===editTg))clearTg();
   save();
 }
-/* --- medicine lines --- */
+
 function addLine(l){
   l=l||{};
   const d=document.createElement('div');d.className='line';
-  d.innerHTML='<div class="f" style="flex:1;min-width:200px"><label>Medicine</label><input data-k="name" placeholder="medicine name"></div>'+
+  d.innerHTML='<div class="f" style="flex:1;min-width:200px"><label>Medicine</label><input data-k="name" list="itemCat" placeholder="pick or type medicine"></div>'+
     '<div class="f"><label>Qty</label><input data-k="qty" class="num" inputmode="numeric" style="min-width:80px"></div>'+
     '<div class="f"><label>Rate &#8377;</label><input data-k="rate" class="num" inputmode="numeric" style="min-width:90px"></div>'+
     '<div class="f"><label>Amount &#8377;</label><input data-k="amount" class="num" inputmode="numeric" style="min-width:110px"></div>'+
@@ -934,11 +1184,10 @@ function readLines(){
 function lineTot(){$('rxLineTot').textContent=money(readLines().reduce((s,l)=>s+ +l.amount,0))}
 $('rxLines').addEventListener('input',e=>{
   const k=e.target.dataset.k;if(!k)return;
-  if(k==='qty'||k==='rate'){
-    const row=e.target.closest('.line'),g=n=>row.querySelector('[data-k="'+n+'"]');
-    const q=+g('qty').value||0,r=+g('rate').value||0;
-    if(q&&r)g('amount').value=q*r;
-  }
+  const row=e.target.closest('.line'),g=n=>row.querySelector('[data-k="'+n+'"]');
+  if(k==='name'){const hit=findItem(e.target.value);if(hit&&+hit.rate&&!g('rate').value)g('rate').value=hit.rate;}
+  const q=+g('qty').value||0,r=+g('rate').value||0;
+  if(q&&r&&(k!=='name'||!g('amount').value))g('amount').value=q*r;
   lineTot();
 });
 $('rxLines').addEventListener('click',e=>{
@@ -975,84 +1224,61 @@ function clearTg(){
   $('tgFormTitle').textContent='New target';$('gSave').textContent='Save target';
   $('gCancel').style.display='none';$('tgCard').classList.remove('editing');
 }
+$('iCancel').onclick=()=>{clearItem();render()};
 $('kCancel').onclick=()=>{clearDoc();render()};
 $('rCancel').onclick=()=>{clearRx();render()};
 $('gCancel').onclick=()=>{clearTg();render()};
-$('bCancel').onclick=()=>{clearBill();render()};
-$('dCancel').onclick=()=>{clearDep();render()};
 $('pCancel').onclick=()=>{clearParty();render()};
 $('delPartyAll').onclick=()=>{if(openParty)removeParty(openParty)};
 
 document.body.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   const d=b.dataset;
-  if(d.eb)loadBill(d.eb);
-  if(d.ed)loadDep(d.ed);
   if(d.ep)loadParty(d.ep);
   if(d.dp)removeParty(d.dp);
-  if(d.db){const x=S.bills.find(v=>v.id===d.db);
-    if(confirm('Delete bill '+(x?x.billNo:'')+' \u2014 parcel value '+money(x?x.value:0)+', bill amount '+money(x?x.amount:0)+'?')){S.bills=S.bills.filter(v=>v.id!==d.db);if(editBill===d.db)clearBill();save();}}
-  if(d.dd){const x=S.deposits.find(v=>v.id===d.dd);
-    if(confirm('Delete deposit of '+money(x?x.amount:0)+' dated '+dmy(x?x.date:'')+'?')){S.deposits=S.deposits.filter(v=>v.id!==d.dd);if(editDep===d.dd)clearDep();save();}}
+  if(d.ei)loadItem(d.ei);
+  if(d.di)removeItem(d.di);
   if(d.ek)loadDoc(d.ek);
   if(d.dk)removeDoc(d.dk);
   if(d.er)loadRx(d.er);
-  if(d.dr){const x=S.rx.find(v=>v.id===d.dr);
-    if(confirm('Delete the entry of '+dmy(x?x.date:'')+' for '+(x?doctor(x.doctorId).name:'')+' \u2014 '+money(x?rxTot(x):0)+'?')){
-      S.rx=S.rx.filter(v=>v.id!==d.dr);if(editRx===d.dr)clearRx();save();}}
+  if(d.dr){const x=S.rx.find(v=>v.id===d.dr);if(confirm('Delete this prescription entry?')){S.rx=S.rx.filter(v=>v.id!==d.dr);if(editRx===d.dr)clearRx();save();}}
+  if(d.el){
+    const [typ,id]=d.el.split(':');
+    if(typ==='b')loadBill(id);else if(typ==='d')loadDep(id);
+  }
+  if(d.dl){
+    const [typ,id]=d.dl.split(':');
+    if(typ==='b'&&confirm('Delete this bill?')){S.bills=S.bills.filter(x=>x.id!==id);if(editBill===id)clearBill();save();}
+    else if(typ==='d'&&confirm('Delete this payment entry?')){S.deposits=S.deposits.filter(x=>x.id!==id);if(editDep===id)clearDep();save();}
+  }
   if(d.etg)loadTg(d.etg);
-  if(d.dtg){const x=S.targets.find(v=>v.id===d.dtg);
-    if(confirm('Delete the '+money(x?x.amount:0)+' target for '+(x?doctor(x.doctorId).name:'')+'?')){
-      S.targets=S.targets.filter(v=>v.id!==d.dtg);if(editTg===d.dtg)clearTg();save();}}
+  if(d.dtg){if(confirm('Delete target?')){S.targets=S.targets.filter(v=>v.id!==d.dtg);if(editTg===d.dtg)clearTg();save();}}
   if(d.tgauto){const t=S.targets.find(v=>v.id===d.tgauto);if(t){t.auto=!t.auto;save()}}
-  if(d.roll){const [tid,pi]=d.roll.split(':'),t=S.targets.find(v=>v.id===tid);
-    if(t){t.rolls=t.rolls||{};if(t.rolls[pi])delete t.rolls[pi];else t.rolls[pi]=1;save()}}
+  if(d.roll){const [tid,pi]=d.roll.split(':'),t=S.targets.find(v=>v.id===tid);if(t){t.rolls=t.rolls||{};if(t.rolls[pi])delete t.rolls[pi];else t.rolls[pi]=1;save()}}
   if(d.x)exportIt(d.x);
 });
 
-/* ---------- forms ---------- */
-$('bDate').value=today(); $('dDate').value=today();
-
 $('pSave').onclick=()=>{
   const name=val('pName'),city=val('pCity'),phone=val('pPhone');
-  if(!name||!city)return alert('Party name and city are both needed.');
-  if(S.parties.some(p=>p.id!==editParty&&p.name.toLowerCase()===name.toLowerCase()&&p.city.toLowerCase()===city.toLowerCase()))
-    return alert('That party already exists in this city.');
+  if(!name||!city)return alert('Medical name and city are both needed.');
   if(editParty){const p=S.parties.find(x=>x.id===editParty);p.name=name;p.city=city;p.phone=phone;}
   else S.parties.push({id:uid(),name,city,phone});
   clearParty();save();
 };
-$('bSave').onclick=()=>{
-  const partyId=val('bParty'),billNo=val('bNo'),value=+$('bVal').value,amount=+$('bAmt').value;
-  if(!partyId)return alert('Pick a party.');
-  if(!billNo)return alert('Bill number is needed.');
-  if(!value||value<=0)return alert('Enter the parcel value. Deposits are set against this figure.');
-  if(!amount||amount<=0)return alert('Enter the bill amount.');
-  const rec={partyId,date:$('bDate').value||today(),billNo,biltyNo:val('bBilty'),parcel:val('bParcel'),value,amount};
-  if(editBill)Object.assign(S.bills.find(x=>x.id===editBill),rec);
-  else S.bills.push(Object.assign({id:uid()},rec));
-  clearBill();save();
-};
-$('dSave').onclick=()=>{
-  const partyId=val('dParty'),amount=+$('dAmt').value;
-  if(!partyId)return alert('Pick a party.');
-  if(!amount||amount<=0)return alert('Enter the deposit amount.');
-  const rec={partyId,date:$('dDate').value||today(),amount,mode:val('dMode'),note:val('dNote')};
-  if(editDep)Object.assign(S.deposits.find(x=>x.id===editDep),rec);
-  else S.deposits.push(Object.assign({id:uid()},rec));
-  clearDep();save();
-  const pv=S.bills.filter(b=>b.partyId===partyId).reduce((s,b)=>s+ +b.value,0);
-  const pd=S.deposits.filter(d=>d.partyId===partyId).reduce((s,d)=>s+ +d.amount,0);
-  if(pd>pv)alert('Note: deposits now exceed the parcel value by '+money(pd-pv)+'.');
-};
+$('rDate').value=today(); $('gStart').value=today(); $('bDate').value=today(); $('dDate').value=today();
+addLine(); lineTot(); addBillLine(); billLineTot();
 
-$('rDate').value=today(); $('gStart').value=today(); addLine(); lineTot();
-
+$('iSave').onclick=()=>{
+  const name=val('iName');
+  if(!name)return alert('Item name is needed.');
+  const rec={name,pack:val('iPack'),rate:+$('iRate').value||0,note:val('iNote')};
+  if(editItem)Object.assign(S.items.find(x=>x.id===editItem),rec);
+  else S.items.push(Object.assign({id:uid()},rec));
+  clearItem();save();
+};
 $('kSave').onclick=()=>{
   const name=val('kName');
   if(!name)return alert('Doctor name is needed.');
-  if(S.doctors.some(d=>d.id!==editDoc&&d.name.toLowerCase()===name.toLowerCase()&&(d.city||'').toLowerCase()===val('kCity').toLowerCase()))
-    return alert('That doctor already exists in this city.');
   const rec={name,speciality:val('kSpec'),clinic:val('kClinic'),city:val('kCity'),phone:val('kPhone')};
   if(editDoc)Object.assign(S.doctors.find(x=>x.id===editDoc),rec);
   else S.doctors.push(Object.assign({id:uid()},rec));
@@ -1063,8 +1289,7 @@ $('rSave').onclick=()=>{
   if(!doctorId)return alert('Pick a doctor.');
   if(!partyId)return alert('Pick the medical this went to.');
   if(!lines.length)return alert('Add at least one medicine.');
-  const bad=lines.find(l=>!l.name);
-  if(bad)return alert('Every medicine line needs a name.');
+  absorbItems(lines);
   const rec={doctorId,partyId,date:$('rDate').value||today(),note:val('rNote'),lines};
   if(editRx)Object.assign(S.rx.find(x=>x.id===editRx),rec);
   else S.rx.push(Object.assign({id:uid()},rec));
@@ -1072,34 +1297,15 @@ $('rSave').onclick=()=>{
 };
 $('gSave').onclick=()=>{
   const doctorId=val('gDoc'),amount=+$('gAmt').value,dur=+$('gDur').value,unit=val('gUnit'),start=$('gStart').value;
-  if(!doctorId)return alert('Pick a doctor.');
-  if(!amount||amount<=0)return alert('Enter the target amount in rupees.');
-  if(!dur||dur<=0)return alert('Enter how long one period runs.');
-  if(!start)return alert('Pick the start date. You decide when the target begins.');
+  if(!doctorId||!amount)return alert('Doctor and Target amount are required.');
   const rec={doctorId,amount,dur,unit,start,note:val('gNote'),auto:$('gAuto').checked};
-  if(editTg){const t=S.targets.find(x=>x.id===editTg);const keep=t.rolls;Object.assign(t,rec);t.rolls=keep||{};}
+  if(editTg){const t=S.targets.find(x=>x.id===editTg);Object.assign(t,rec);}
   else S.targets.push(Object.assign({id:uid(),rolls:{}},rec));
   clearTg();save();tab('targets');
 };
 
-/* ---------- Enter moves to the next field ---------- */
-document.addEventListener('keydown',e=>{
-  if(e.key!=='Enter'||e.shiftKey)return;
-  const el=e.target;
-  if(!el.matches('input:not([type=file]),select'))return;
-  const card=el.closest('.card');if(!card)return;
-  e.preventDefault();
-  const fields=[...card.querySelectorAll('input:not([type=file]),select')].filter(x=>!x.disabled&&x.offsetParent!==null);
-  const next=fields[fields.indexOf(el)+1];
-  if(next){next.focus();if(next.select)try{next.select()}catch(err){}return}
-  const btn=card.querySelector('button.act');
-  if(btn){btn.click();(fields.find(x=>x.tagName==='SELECT')||fields[0]).focus()}
-  else el.blur();
-});
-
-/* ---------- exports: PDF / PNG / CSV ---------- */
-function stamp(){const d=new Date(),p=n=>String(n).padStart(2,'0');
-  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())}
+/* ---------- Exports ---------- */
+function stamp(){const d=new Date(),p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())}
 function dl(url,name){const a=document.createElement('a');a.href=url;a.download=name;a.click()}
 function csvOf(D){
   const clean=t=>String(t).replace(/\u20B9/g,'').replace(/(\d),(?=\d)/g,'$1').replace(/\u2014/g,'');
@@ -1109,10 +1315,10 @@ function csvOf(D){
   return '\ufeff'+lines.join('\r\n');
 }
 function pngOf(title,sub,blocks){
-  const dpr=2,pad=30,cp=12,rowH=26,headH=30,capH=28,gap=24;
+  const dpr=2,pad=30,cp=12,rowH=26,headH=30,gap=24;
   const c=document.createElement('canvas'),x=c.getContext('2d');
   const fH='bold 12px system-ui,sans-serif',fC='13px ui-monospace,monospace',fF='bold 13px ui-monospace,monospace',
-    fT='bold 21px system-ui,sans-serif',fS='12px system-ui,sans-serif',fCap='bold 12px system-ui,sans-serif';
+    fT='bold 21px system-ui,sans-serif',fS='12px system-ui,sans-serif';
   blocks.forEach(b=>{
     b.w=b.headers.map((h,i)=>{x.font=fH;let w=x.measureText(h).width;x.font=fC;
       b.rows.concat(b.foot?[b.foot]:[]).forEach(r=>{const cell=r[i];w=Math.max(w,x.measureText(cell?cell.t:'').width)});
@@ -1120,97 +1326,32 @@ function pngOf(title,sub,blocks){
     b.tw=b.w.reduce((a,v)=>a+v,0);
   });
   const width=Math.max(460,...blocks.map(b=>b.tw))+pad*2;
-  let height=pad+30+20+10;
-  blocks.forEach(b=>{height+=(b.caption?capH:0)+headH+Math.max(1,b.rows.length)*rowH+(b.foot?rowH+6:0)+gap});
-  height+=pad-gap+22;
+  let height=pad+60;blocks.forEach(b=>{height+=headH+Math.max(1,b.rows.length)*rowH+(b.foot?rowH+6:0)+gap});
   c.width=width*dpr;c.height=height*dpr;x.scale(dpr,dpr);
   x.fillStyle='#fff';x.fillRect(0,0,width,height);
   let y=pad;
-  x.fillStyle='#152420';x.font=fT;x.textBaseline='alphabetic';x.fillText(title,pad,y+18);y+=26;
+  x.fillStyle='#152420';x.font=fT;x.fillText(title,pad,y+18);y+=26;
   x.font=fS;x.fillStyle='#3d4f49';x.fillText(sub,pad,y+12);y+=26;
   const colors={due:'#a83a24',paid:'#2f7a3f',muted:'#3d4f49','':'#152420'};
   blocks.forEach(b=>{
-    if(b.caption){x.font=fCap;x.fillStyle='#3d4f49';x.fillText(b.caption.toUpperCase(),pad,y+14);y+=capH}
     const cx=[];let acc=pad;b.w.forEach(w=>{cx.push(acc);acc+=w});
     x.font=fH;x.fillStyle='#3d4f49';
-    b.headers.forEach((h,i)=>{const r=b.aligns[i]==='r';
-      x.textAlign=r?'right':'left';x.fillText(h.toUpperCase(),r?cx[i]+b.w[i]-cp:cx[i]+cp,y+18)});
-    y+=headH;x.strokeStyle='#152420';x.lineWidth=1;
-    x.beginPath();x.moveTo(pad,y-6);x.lineTo(pad+b.tw,y-6);x.stroke();
-    if(!b.rows.length){x.font=fC;x.fillStyle='#3d4f49';x.textAlign='left';x.fillText('Nothing to show.',pad+cp,y+17);y+=rowH}
-    b.rows.forEach((r,ri)=>{
-      if(ri%2){x.fillStyle='#f5f7f5';x.fillRect(pad,y,b.tw,rowH)}
-      x.font=fC;
-      r.forEach((cell,i)=>{const rr=b.aligns[i]==='r';x.textAlign=rr?'right':'left';
-        x.fillStyle=colors[cell.c]||'#152420';x.fillText(cell.t,rr?cx[i]+b.w[i]-cp:cx[i]+cp,y+17)});
-      x.strokeStyle='#e4e8e4';x.beginPath();x.moveTo(pad,y+rowH);x.lineTo(pad+b.tw,y+rowH);x.stroke();
+    b.headers.forEach((h,i)=>{const r=b.aligns[i]==='r';x.textAlign=r?'right':'left';x.fillText(h.toUpperCase(),r?cx[i]+b.w[i]-cp:cx[i]+cp,y+18)});
+    y+=headH;x.strokeStyle='#152420';x.beginPath();x.moveTo(pad,y-6);x.lineTo(pad+b.tw,y-6);x.stroke();
+    b.rows.forEach(r=>{
+      x.font=fC;r.forEach((cell,i)=>{const rr=b.aligns[i]==='r';x.textAlign=rr?'right':'left';x.fillStyle=colors[cell.c]||'#152420';x.fillText(cell.t,rr?cx[i]+b.w[i]-cp:cx[i]+cp,y+17)});
       y+=rowH;
     });
     if(b.foot){
-      x.strokeStyle='#152420';x.lineWidth=1.5;x.beginPath();x.moveTo(pad,y+2);x.lineTo(pad+b.tw,y+2);x.stroke();
-      y+=6;x.font=fF;
-      b.foot.forEach((cell,i)=>{const rr=b.aligns[i]==='r';x.textAlign=rr?'right':'left';
-        x.fillStyle=colors[cell.c]||'#152420';x.fillText(cell.t,rr?cx[i]+b.w[i]-cp:cx[i]+cp,y+17)});
+      x.font=fF;b.foot.forEach((cell,i)=>{const rr=b.aligns[i]==='r';x.textAlign=rr?'right':'left';x.fillStyle=colors[cell.c]||'#152420';x.fillText(cell.t,rr?cx[i]+b.w[i]-cp:cx[i]+cp,y+17)});
       y+=rowH;
     }
-    y+=gap;
   });
-  x.textAlign='left';x.font=fS;x.fillStyle='#7b8a85';
-  x.fillText('Bill Tracking System \u00B7 generated '+dmy(today())+' '+new Date().toTimeString().slice(0,5),pad,height-pad+10);
   return c;
 }
-function printOut(title,sub){
-  $('phTitle').textContent=title;$('phSub').textContent=sub;
-  setTimeout(()=>window.print(),60);
-}
-function partyBlocks(){
-  const p=party(openParty);
-  const bs=billsOf(openParty).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  const ds=depsOf(openParty).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  const tv=parcelVal(openParty),ta=billAmt(openParty),tp=paidOf(openParty),bl=balance(openParty);
-  return {name:p.name,city:p.city,phone:p.phone,blocks:[
-    {caption:'Bills',headers:['Date','Bill no.','Bilty','Parcel','Parcel value','Bill amount'],aligns:['l','l','l','l','r','r'],
-      rows:bs.map(b=>[T(dmy(b.date)),T(b.billNo),T(b.biltyNo||'-'),T(b.parcel||'-'),T(money(b.value),'','r'),T(money(b.amount),'','r')]),
-      foot:[T('Total'),T(''),T(''),T(''),T(money(tv),'','r'),T(money(ta),'','r')]},
-    {caption:'Deposits',headers:['Date','Mode','Note','Amount'],aligns:['l','l','l','r'],
-      rows:ds.map(d=>[T(dmy(d.date)),T(d.mode),T(d.note||'-'),T(money(d.amount),'paid','r')]),
-      foot:[T('Total'),T(''),T(''),T(money(tp),'paid','r')]},
-    {caption:'Position',headers:['Parcel value','Deposited','Parcel balance','Bill amount'],aligns:['r','r','r','r'],
-      rows:[[T(money(tv),'','r'),T(money(tp),'paid','r'),T(money(bl),cls(bl),'r'),T(money(ta),'','r')]]}
-  ]};
-}
-function doctorBlocks(){
-  const d=doctor(openDoc),f=val('kfFrom'),t=val('kfTo');
-  const D=docRxData(openDoc);
-  const tg=S.targets.filter(x=>x.doctorId===openDoc);
-  const blocks=[{caption:'Medicines prescribed',headers:D.headers,aligns:D.aligns,rows:D.rows,foot:D.foot}];
-  if(tg.length){
-    const rows=[];
-    tg.forEach(x=>periodsOf(x).forEach(p=>rows.push([T('P'+(p.i+1)),T(dmy(p.s)),T(dmy(p.e)),T(money(p.eff),'','r'),
-      T(money(p.ach),'paid','r'),T(gapTxt(p.gap),cls(p.gap),'r'),T(p.rolled?'Yes':'No')])));
-    blocks.push({caption:'Targets',headers:['Period','From','To','Effective target','Achieved','Short / surplus','Rolled'],
-      aligns:['l','l','l','r','r','r','l'],rows});
-  }
-  blocks.push({caption:'Summary',headers:['Entries','Medicals covered','Value prescribed'],aligns:['r','r','r'],
-    rows:[[T(rxOf(openDoc,f,t).length,'','r'),T(medicalsOf(openDoc,f,t),'','r'),T(money(rxValue(openDoc,f,t)),'','r')]]});
-  return {name:d.name,city:d.city||'',phone:d.phone||'',blocks};
-}
+function printOut(title,sub){$('phTitle').textContent=title;$('phSub').textContent=sub;setTimeout(()=>window.print(),60);}
 function exportIt(what){
   const [which,fmt]=what.split('-');
-  if(which==='doctor'){
-    if(!openDoc)return;
-    const P=doctorBlocks(),title=P.name+(P.city?' \u00B7 '+P.city:''),sub=rangeTxt(val('kfFrom'),val('kfTo'))+(P.phone?' \u00B7 '+P.phone:'');
-    if(fmt==='pdf')return printOut('Doctor statement \u2014 '+title,sub);
-    const c=pngOf('Doctor statement \u2014 '+title,sub,P.blocks);
-    return dl(c.toDataURL('image/png'),'bts-doctor-'+P.name.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+stamp()+'.png');
-  }
-  if(which==='party'){
-    if(!openParty)return;
-    const P=partyBlocks(),title=P.name+' \u00B7 '+P.city,sub=rangeTxt(val('fFrom'),val('fTo'))+(P.phone?' \u00B7 '+P.phone:'');
-    if(fmt==='pdf')return printOut('Party statement \u2014 '+title,sub);
-    const c=pngOf('Party statement \u2014 '+title,sub,P.blocks);
-    return dl(c.toDataURL('image/png'),'bts-'+P.name.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+stamp()+'.png');
-  }
   const D=V[which];if(!D)return;
   const base='bts-'+which+'-'+stamp();
   if(fmt==='csv')return dl(URL.createObjectURL(new Blob([csvOf(D)],{type:'text/csv;charset=utf-8'})),base+'.csv');
@@ -1219,118 +1360,47 @@ function exportIt(what){
   dl(c.toDataURL('image/png'),base+'.png');
 }
 
-/* ---------- backup ---------- */
+/* ---------- backup load & merge ---------- */
 $('exp').onclick=()=>{
-  const out={exportedAt:new Date().toISOString(),parties:S.parties,bills:S.bills,deposits:S.deposits,
-    doctors:S.doctors,rx:S.rx,targets:S.targets};
-  dl(URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:'application/json'})),'bts-backup-'+stamp()+'.json');
-  $('dataHint').textContent='Downloaded bts-backup-'+stamp()+'.json with '+S.parties.length+' parties, '+S.bills.length+' bills, '+
-    S.deposits.length+' deposits, '+S.doctors.length+' doctors, '+S.rx.length+' prescriptions, '+S.targets.length+' targets.';
+  dl(URL.createObjectURL(new Blob([JSON.stringify(snapshot(),null,2)],{type:'application/json'})),'bts-backup-'+stamp()+'.json');
 };
 function mergeData(d){
-  const map={},add={p:0,b:0,dp:0,k:0,r:0,g:0},skip={p:0,b:0,dp:0,k:0,r:0,g:0};
+  const map={},add={p:0,k:0,r:0,g:0,i:0,b:0,d:0},skip={p:0,k:0,r:0,g:0,i:0,b:0,d:0};
   const dmap={};
-  (d.parties||[]).forEach(p=>{
-    const hit=S.parties.find(x=>x.name.trim().toLowerCase()===String(p.name).trim().toLowerCase()&&String(x.city).trim().toLowerCase()===String(p.city).trim().toLowerCase());
-    if(hit){map[p.id]=hit.id;if(!hit.phone&&p.phone)hit.phone=p.phone;skip.p++;return}
-    const id=S.parties.some(x=>x.id===p.id)?uid():p.id;
-    map[p.id]=id;S.parties.push({id,name:p.name,city:p.city,phone:p.phone||''});add.p++;
-  });
-  (d.bills||[]).forEach(b=>{
-    const pid=map[b.partyId]||b.partyId;
-    if(!S.parties.some(p=>p.id===pid))return;
-    if(S.bills.some(x=>x.id===b.id||(x.partyId===pid&&x.billNo===b.billNo&&+x.amount===+b.amount&&x.date===b.date))){skip.b++;return}
-    S.bills.push({id:S.bills.some(x=>x.id===b.id)?uid():b.id,partyId:pid,date:b.date,billNo:b.billNo,biltyNo:b.biltyNo||'',parcel:b.parcel||'',value:+b.value||0,amount:+b.amount||0});add.b++;
-  });
-  (d.deposits||[]).forEach(v=>{
-    const pid=map[v.partyId]||v.partyId;
-    if(!S.parties.some(p=>p.id===pid))return;
-    if(S.deposits.some(x=>x.id===v.id||(x.partyId===pid&&x.date===v.date&&+x.amount===+v.amount&&(x.note||'')===(v.note||'')))){skip.dp++;return}
-    S.deposits.push({id:S.deposits.some(x=>x.id===v.id)?uid():v.id,partyId:pid,date:v.date,amount:+v.amount||0,mode:v.mode||'Online',note:v.note||''});add.dp++;
-  });
-  (d.doctors||[]).forEach(k=>{
-    const hit=S.doctors.find(x=>x.name.trim().toLowerCase()===String(k.name).trim().toLowerCase()
-      &&String(x.city||'').trim().toLowerCase()===String(k.city||'').trim().toLowerCase());
-    if(hit){dmap[k.id]=hit.id;if(!hit.phone&&k.phone)hit.phone=k.phone;skip.k++;return}
-    const id=S.doctors.some(x=>x.id===k.id)?uid():k.id;
-    dmap[k.id]=id;S.doctors.push({id,name:k.name,speciality:k.speciality||'',clinic:k.clinic||'',city:k.city||'',phone:k.phone||''});add.k++;
-  });
-  (d.rx||[]).forEach(r=>{
-    const did=dmap[r.doctorId]||r.doctorId,pid=map[r.partyId]||r.partyId;
-    if(!S.doctors.some(x=>x.id===did)||!S.parties.some(x=>x.id===pid))return;
-    const lines=(r.lines||[]).map(l=>({name:l.name||'',qty:+l.qty||0,rate:+l.rate||0,amount:+l.amount||0}));
-    const sig=l=>l.map(x=>x.name+':'+x.amount).join('|');
-    if(S.rx.some(x=>x.id===r.id||(x.doctorId===did&&x.partyId===pid&&x.date===r.date&&sig(x.lines||[])===sig(lines)))){skip.r++;return}
-    S.rx.push({id:S.rx.some(x=>x.id===r.id)?uid():r.id,doctorId:did,partyId:pid,date:r.date,note:r.note||'',lines});add.r++;
-  });
-  (d.targets||[]).forEach(t=>{
-    const did=dmap[t.doctorId]||t.doctorId;
-    if(!S.doctors.some(x=>x.id===did))return;
-    if(S.targets.some(x=>x.id===t.id||(x.doctorId===did&&x.start===t.start&&+x.amount===+t.amount&&+x.dur===+t.dur&&x.unit===t.unit))){skip.g++;return}
-    S.targets.push({id:S.targets.some(x=>x.id===t.id)?uid():t.id,doctorId:did,amount:+t.amount||0,dur:+t.dur||1,
-      unit:t.unit||'months',start:t.start,note:t.note||'',auto:!!t.auto,rolls:t.rolls||{}});add.g++;
-  });
+  (d.items||[]).forEach(i=>{if(!i||!i.name)return;if(findItem(i.name)){skip.i++;return}S.items.push({id:uid(),name:i.name,pack:i.pack||'',rate:+i.rate||0,note:i.note||''});add.i++;});
+  (d.parties||[]).forEach(p=>{const hit=S.parties.find(x=>x.name.trim().toLowerCase()===String(p.name).trim().toLowerCase()&&String(x.city).trim().toLowerCase()===String(p.city).trim().toLowerCase());if(hit){map[p.id]=hit.id;skip.p++;return}const id=uid();map[p.id]=id;S.parties.push({id,name:p.name,city:p.city,phone:p.phone||''});add.p++;});
+  (d.doctors||[]).forEach(k=>{const hit=S.doctors.find(x=>x.name.trim().toLowerCase()===String(k.name).trim().toLowerCase()&&String(x.city||'').trim().toLowerCase()===String(k.city||'').trim().toLowerCase());if(hit){dmap[k.id]=hit.id;skip.k++;return}const id=uid();dmap[k.id]=id;S.doctors.push({id,name:k.name,speciality:k.speciality||'',clinic:k.clinic||'',city:k.city||'',phone:k.phone||''});add.k++;});
+  (d.bills||[]).forEach(b=>{const pid=map[b.partyId]||b.partyId;if(!S.parties.some(x=>x.id===pid))return;S.bills.push({id:uid(),partyId:pid,no:b.no||'',date:b.date,note:b.note||'',items:b.items||[]});add.b++;});
+  (d.deposits||[]).forEach(v=>{const pid=map[v.partyId]||v.partyId;if(!S.parties.some(x=>x.id===pid))return;S.deposits.push({id:uid(),partyId:pid,amount:+v.amount||0,date:v.date,mode:v.mode||'Cash',note:v.note||''});add.d++;});
+  (d.rx||[]).forEach(r=>{const did=dmap[r.doctorId]||r.doctorId,pid=map[r.partyId]||r.partyId;if(!S.doctors.some(x=>x.id===did)||!S.parties.some(x=>x.id===pid))return;S.rx.push({id:uid(),doctorId:did,partyId:pid,date:r.date,note:r.note||'',lines:r.lines||[]});add.r++;});
+  (d.targets||[]).forEach(t=>{const did=dmap[t.doctorId]||t.doctorId;if(!S.doctors.some(x=>x.id===did))return;S.targets.push({id:uid(),doctorId:did,amount:+t.amount||0,dur:+t.dur||1,unit:t.unit||'months',start:t.start,note:t.note||'',auto:!!t.auto,rolls:t.rolls||{}});add.g++;});
   return {add,skip};
 }
 $('imp').onchange=async e=>{
   const files=[...e.target.files];if(!files.length)return;
-  const replace=val('impMode')==='replace';
-  if(replace&&(S.parties.length||S.bills.length||S.deposits.length||S.doctors.length||S.rx.length||S.targets.length)){
-    if(!confirm('Replace mode will erase the current '+S.parties.length+' parties, '+S.bills.length+' bills, '+S.deposits.length+
-      ' deposits, '+S.doctors.length+' doctors, '+S.rx.length+' prescriptions and '+S.targets.length+
-      ' targets, then load the selected file(s). Continue?')){e.target.value='';return}
-    S.parties=[];S.bills=[];S.deposits=[];S.doctors=[];S.rx=[];S.targets=[];
-  }
-  const rep=[];let ok=0;
   for(const f of files){
     try{
       const d=JSON.parse(await f.text());
-      if(!d||(!d.parties&&!d.bills&&!d.deposits&&!d.doctors&&!d.rx&&!d.targets)){rep.push({n:f.name,err:'Not a backup file'});continue}
-      const r=mergeData(d);ok++;rep.push({n:f.name,a:r.add,s:r.skip});
-    }catch(err){rep.push({n:f.name,err:'Could not be read as JSON'})}
+      if(d)mergeData(d);
+    }catch(err){}
   }
-  openParty=null;await save();
-  $('impReport').innerHTML='<div class="scroll" style="margin-top:12px"><table><thead><tr><th>File</th>'+
-    '<th class="r">Parties</th><th class="r">Bills</th><th class="r">Deposits</th><th class="r">Doctors</th><th class="r">Rx</th>'+
-    '<th class="r">Targets</th><th>Skipped as duplicate</th></tr></thead><tbody>'+
-    rep.map(r=>r.err?'<tr><td>'+esc(r.n)+'</td><td colspan="7" class="due">'+r.err+'</td></tr>'
-      :'<tr><td>'+esc(r.n)+'</td><td class="r num">+'+r.a.p+'</td><td class="r num">+'+r.a.b+'</td><td class="r num">+'+r.a.dp+'</td>'+
-       '<td class="r num">+'+r.a.k+'</td><td class="r num">+'+r.a.r+'</td><td class="r num">+'+r.a.g+'</td>'+
-       '<td class="num muted">'+r.s.p+' / '+r.s.b+' / '+r.s.dp+' / '+r.s.k+' / '+r.s.r+' / '+r.s.g+'</td></tr>').join('')+'</tbody></table></div>';
-  $('dataHint').textContent=(replace?'Replaced with ':'Merged ')+ok+' of '+files.length+' file(s). Now holding '+S.parties.length+
-    ' parties, '+S.bills.length+' bills, '+S.deposits.length+' deposits, '+S.doctors.length+' doctors, '+S.rx.length+
-    ' prescriptions, '+S.targets.length+' targets.';
-  e.target.value='';
+  await save();
   tab('ledger');
 };
 $('seed').onclick=()=>{
-  const a=uid(),b=uid(),c=uid();
-  S.parties.push({id:a,name:'Asnani Traders',city:'Indore',phone:'9876543210'},
-    {id:b,name:'Shri Ram Cloth House',city:'Bhopal',phone:'9812345678'},
-    {id:c,name:'Krishna Garments',city:'Indore',phone:''});
-  S.bills.push({id:uid(),partyId:a,date:'2026-08-02',billNo:'1042',biltyNo:'BL-8891',parcel:'24 pc shirt',value:200000,amount:30000},
-    {id:uid(),partyId:a,date:'2026-08-11',billNo:'1058',biltyNo:'BL-8902',parcel:'12 pc shirt',value:100000,amount:14400},
-    {id:uid(),partyId:b,date:'2026-08-05',billNo:'1049',biltyNo:'BL-8895',parcel:'40 pc trouser',value:320000,amount:52000},
-    {id:uid(),partyId:c,date:'2026-08-14',billNo:'1063',biltyNo:'BL-8910',parcel:'18 pc shirt',value:150000,amount:21000});
-  S.deposits.push({id:uid(),partyId:a,date:'2026-08-08',amount:120000,mode:'Online',note:'NEFT'},
-    {id:uid(),partyId:b,date:'2026-08-12',amount:320000,mode:'UPI',note:'parcel cleared'});
-  const d1=uid(),d2=uid();
-  S.doctors.push({id:d1,name:'Dr. R. Sharma',speciality:'Physician',clinic:'Sharma Clinic',city:'Indore',phone:'9822001100'},
-    {id:d2,name:'Dr. A. Verma',speciality:'Paediatrics',clinic:'City Hospital',city:'Bhopal',phone:'9822004400'});
-  S.rx.push({id:uid(),doctorId:d1,partyId:a,date:'2026-07-14',note:'',lines:[{name:'Amoxycillin 500',qty:100,rate:9,amount:900},{name:'Pantoprazole 40',qty:200,rate:6,amount:1200}]},
-    {id:uid(),doctorId:d1,partyId:c,date:'2026-08-06',note:'monthly',lines:[{name:'Amoxycillin 500',qty:150,rate:9,amount:1350}]},
-    {id:uid(),doctorId:d2,partyId:b,date:'2026-08-18',note:'',lines:[{name:'Paracetamol syrup',qty:80,rate:42,amount:3360}]});
-  S.targets.push({id:uid(),doctorId:d1,amount:2000,dur:1,unit:'months',start:'2026-07-01',note:'Monsoon scheme',auto:true,rolls:{}},
-    {id:uid(),doctorId:d2,amount:5000,dur:15,unit:'days',start:'2026-08-01',note:'',auto:false,rolls:{}});
+  const a=uid(),b=uid();
+  S.parties.push({id:a,name:'Asnani Medical Store',city:'Indore',phone:'9876543210'},{id:b,name:'Shri Ram Medicals',city:'Bhopal',phone:'9812345678'});
+  S.items.push({id:uid(),name:'Amoxycillin 500',pack:'10 x 10',rate:120,note:'Alkem'},{id:uid(),name:'Paracetamol 650',pack:'15 x 10',rate:50,note:'Micro'});
+  const d1=uid();
+  S.doctors.push({id:d1,name:'Dr. R. Sharma',speciality:'Physician',clinic:'Sharma Clinic',city:'Indore',phone:'9822001100'});
+  S.bills.push({id:uid(),partyId:a,no:'B-101',date:today(),note:'Opening order',items:[{name:'Amoxycillin 500',qty:20,rate:120,amount:2400}]});
+  S.deposits.push({id:uid(),partyId:a,amount:1500,date:today(),mode:'UPI',note:'Advance'});
   save();$('dataHint').textContent='Sample data loaded.';
 };
 $('wipe').onclick=()=>{
-  if(!confirm('Erase all '+S.parties.length+' parties, '+S.bills.length+' bills, '+S.deposits.length+' deposits, '+
-    S.doctors.length+' doctors, '+S.rx.length+' prescriptions and '+S.targets.length+' targets?\nDownload a backup first if you need it.'))return;
-  if(!confirm('Last check. Erase everything?'))return;
-  S.parties=[];S.bills=[];S.deposits=[];S.doctors=[];S.rx=[];S.targets=[];
-  openParty=null;openDoc=null;clearBill();clearDep();clearParty();clearDoc();clearRx();clearTg();
-  save();$('dataHint').textContent='All data erased.';
+  if(!confirm('Erase all records?'))return;
+  S.parties=[];S.bills=[];S.deposits=[];S.doctors=[];S.rx=[];S.targets=[];S.items=[];
+  save();
 };
 
 load();
