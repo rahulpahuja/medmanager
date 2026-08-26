@@ -21,7 +21,7 @@ export function renderShell(root, { email, onSignOut, onNewLicense }) {
           <div class="dash-bar"><h2>Pending requests</h2></div>
           <div class="scroll">
             <table class="lictable">
-              <thead><tr><th>From</th><th>Contact</th><th>Requested</th><th></th></tr></thead>
+              <thead><tr><th>From</th><th>Contact</th><th>Business address</th><th>Requested</th><th></th></tr></thead>
               <tbody id="reqRows"></tbody>
             </table>
           </div>
@@ -33,7 +33,7 @@ export function renderShell(root, { email, onSignOut, onNewLicense }) {
         <div class="scroll">
           <table class="lictable">
             <thead><tr>
-              <th>Label</th><th>Status</th><th>Expiry</th><th>Current device</th><th>Created</th><th></th>
+              <th>Label</th><th>Status</th><th>Expiry</th><th>Last paid</th><th>Current device</th><th>Created</th><th></th>
             </tr></thead>
             <tbody id="licRows"></tbody>
           </table>
@@ -55,7 +55,8 @@ export function renderRequests(section, tbody, list) {
   const sorted = [...list].sort((a, b) => (b.requestedAt || 0) - (a.requestedAt || 0));
   tbody.innerHTML = sorted.map((req) => `<tr>
       <td><b>${esc(req.name)}</b>${req.note ? `<div class="note">${esc(req.note)}</div>` : ''}<div class="note">${esc(req.devName || '')}</div></td>
-      <td>${esc(req.contact)}</td>
+      <td>${[req.phone, req.email].filter(Boolean).map(esc).join('<br>') || '—'}</td>
+      <td>${esc(req.address || '—')}</td>
       <td>${esc(fmtDate(req.requestedAt))}</td>
       <td class="row-act">
         <button class="ico" data-act="approve" data-id="${req.id}" title="Approve &amp; issue key">&#10003;</button>
@@ -75,7 +76,8 @@ export function renderRows(tbody, emptyEl, list) {
     return `<tr>
       <td><b>${esc(lic.label)}</b>${lic.note ? `<div class="note">${esc(lic.note)}</div>` : ''}</td>
       <td><span class="pill ${st.cls}">${st.label}</span></td>
-      <td>${esc(fmtDate(lic.expiresAt))}</td>
+      <td>${esc(fmtDate(lic.expiresAt, 'No expiry'))}</td>
+      <td>${esc(fmtDate(lic.lastPaidAt))}</td>
       <td><span class="pill ${cl.cls}">${esc(cl.label)}</span></td>
       <td>${esc(fmtDate(lic.createdAt))}</td>
       <td class="row-act">

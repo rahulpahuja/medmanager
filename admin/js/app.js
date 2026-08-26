@@ -31,9 +31,9 @@ function showLogin(errorMessage) {
 }
 
 function createFromModal(prefill, onDone) {
-  openCreateModal(async ({ label, note, expiresAt }) => {
+  openCreateModal(async ({ label, note, expiresAt, lastPaidAt }) => {
     const rawKey = genLicenseKey();
-    await createLicense({ rawKey, label, note, expiresAt });
+    await createLicense({ rawKey, label, note, expiresAt, lastPaidAt });
     if (onDone) await onDone();
     openKeyRevealModal(rawKey, label);
   }, prefill);

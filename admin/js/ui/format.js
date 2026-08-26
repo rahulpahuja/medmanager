@@ -1,8 +1,8 @@
 // Single responsibility: turn raw license/claim data into display strings.
 export const esc = (s) => String(s == null ? '' : s).replace(/[<>&"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 
-export function fmtDate(ms) {
-  if (!ms) return 'No expiry';
+export function fmtDate(ms, fallback) {
+  if (!ms) return fallback || '—';
   return new Date(+ms).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 

@@ -32,7 +32,7 @@ const store={
 const CFG={min:1,on:true,asked:false,name:''};
 /* ---------- software key and single-device claim ---------- */
 const LOCKMIN=10;
-const LIC={hash:'',devId:'',devName:''};
+const LIC={hash:'',devId:'',devName:'',key:''};
 let locked=false;
 function keyHash(k){
   let h=0x811c9dc5;const str='bts::'+String(k||'');
@@ -72,19 +72,22 @@ async function fbGuard(hash){
 }
 function fbClaim(){if(LIC.hash)fbSet('licenses/'+LIC.hash+'/claim',claim())}
 /* validates an activated key against the catalog the admin portal manages: it must exist,
-   not be revoked, and not be past its expiry date */
+   not be revoked, and not be past its expiry date. Caches the record in LICINFO so the
+   "licence details" panel can show it without a second round trip. */
+let LICINFO={};
 async function fbLicenseCheck(hash){
   hash=hash||LIC.hash;
   if(!hash)return{ok:true};
   const lic=await fbGet('licenses/'+hash);
   if(!lic)return{ok:false,why:'unknown'};
+  LICINFO=lic;
   if(lic.active===false)return{ok:false,why:'revoked'};
   if(lic.expiresAt&&Date.now()>+lic.expiresAt)return{ok:false,why:'expired'};
   return{ok:true};
 }
 function licenseKickOut(why){
   clearInterval(fbTimer);fbTimer=null;clearInterval(timer);timer=null;
-  LIC.hash='';saveLic();
+  LIC.hash='';LIC.key='';LICINFO={};saveLic();
   alert(why==='revoked'?'This software key has been revoked. Contact your administrator for a new key.'
     :why==='expired'?'This software key has expired. Contact your administrator to renew it.'
     :'This software key is not recognised. Contact your administrator for a valid key.');
@@ -104,6 +107,7 @@ function fbStart(){
     if(locked)return;
     const lc=await fbLicenseCheck();
     if(!lc.ok){licenseKickOut(lc.why);return}
+    licPaint();
     const g=await fbGuard();
     if(!g.ok){showLock(g);return}
     fbClaim();
@@ -242,6 +246,20 @@ function licPaint(){
     (LIC.hash?'Activated on '+esc(LIC.devName||'this device'):'No key set')+'</span>'+
     (LIC.hash?'<span>Checked against the licence server every few minutes</span>':'')+
     (fh?'<span>Holding '+esc(CFG.name)+'</span>':'')+(locked?'<span class="due">Locked by another device</span>':'');
+  if(LIC.hash&&LICINFO&&LICINFO.label){
+    const st=LICINFO.active===false?['Revoked','due']:(LICINFO.expiresAt&&Date.now()>+LICINFO.expiresAt?['Expired','due']:['Active','paid']);
+    $('licDetails').style.display='';
+    $('licDetails').innerHTML=fmtSum([
+      ['Licensed to',esc(LICINFO.label)],
+      ['Status',st[0],st[1]],
+      ['Expires',LICINFO.expiresAt?dmy(new Date(+LICINFO.expiresAt).toISOString().slice(0,10)):'No expiry'],
+      ['Last paid',LICINFO.lastPaidAt?dmy(new Date(+LICINFO.lastPaidAt).toISOString().slice(0,10)):'—'],
+    ]);
+  } else $('licDetails').style.display='none';
+  if(LIC.hash&&LIC.key){
+    $('licKeyRow').style.display='';
+    $('licKeyMasked').textContent=$('licKeyMasked').dataset.shown==='1'?LIC.key:'•'.repeat(10);
+  } else $('licKeyRow').style.display='none';
 }
 function showActivate(change){
   $('actTitle').textContent=change?'Change the software key':'Set the key for this software';
@@ -263,6 +281,7 @@ $('actGo').onclick=async()=>{
   if(!g.ok){$('actWrap').style.display='none';showLock(g);return}
   if(oldHash&&oldHash!==newHash)await fbSet('licenses/'+oldHash+'/claim',null);
   LIC.hash=newHash;
+  LIC.key=k;
   LIC.devName=$('actDev').value.trim()||'This device';
   await saveLic();
   $('actWrap').style.display='none';
@@ -352,11 +371,23 @@ $('lockUnlock').onclick=async()=>{
   const k=$('lockKey').value.trim();
   const d=await fsRead();
   if(!d||!d.lic||keyHash(k)!==d.lic.hash)return alert('That key does not match this file.');
-  LIC.hash=keyHash(k);await saveLic();
+  LIC.hash=keyHash(k);LIC.key=k;await saveLic();
   const g=await fsGuard();
   if(g.ok){unlock();dirty=true;fsWrite(true)} else showLock(g);
 };
 $('licChange').onclick=()=>showActivate(true);
+$('licKeyShow').onclick=()=>{
+  const shown=$('licKeyMasked').dataset.shown==='1';
+  $('licKeyMasked').dataset.shown=shown?'0':'1';
+  $('licKeyShow').textContent=shown?'Show':'Hide';
+  licPaint();
+};
+$('licKeyCopy').onclick=async()=>{
+  if(!LIC.key)return;
+  try{await navigator.clipboard.writeText(LIC.key);$('licKeyCopy').textContent='Copied ✓';
+    setTimeout(()=>{$('licKeyCopy').textContent='Copy key'},1500)}
+  catch(e){alert('Could not copy automatically. Your key: '+LIC.key)}
+};
 $('licDevSave').onclick=async()=>{
   LIC.devName=$('licDev').value.trim()||'This device';await saveLic();licPaint();
   if(fh){dirty=true;fsWrite(true)}
@@ -414,6 +445,7 @@ async function load(){
   if(LIC.hash){
     const lc=await fbLicenseCheck();
     if(!lc.ok){licenseKickOut(lc.why);return}
+    licPaint();
     const fg=await fbGuard();
     if(!fg.ok){showLock(fg);return}
   }
@@ -1329,5 +1361,7 @@ $('wipe').onclick=()=>{
   openParty=null;openDoc=null;clearParty();clearDoc();clearRx();clearTg();clearItem();
   save();$('dataHint').textContent='All data erased.';
 };
+
+$('splashEnter').onclick=()=>{$('splash').classList.add('out')};
 
 load();

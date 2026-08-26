@@ -37,6 +37,9 @@ export function openCreateModal(onCreate, prefill) {
       <div class="f"><label>&nbsp;</label><select id="mUnit"><option value="months">Months</option><option value="days">Days</option><option value="years">Years</option></select></div>
       <div class="f"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="mNoExpiry"> No expiry</label></div>
     </div>
+    <div class="row">
+      <div class="f"><label>Last paid date (optional)</label><input type="date" id="mPaid"></div>
+    </div>
     <div class="row" style="margin-top:6px">
       <button class="act" id="mSave">Create licence</button>
       <button class="ghost" id="mCancel">Cancel</button>
@@ -52,9 +55,11 @@ export function openCreateModal(onCreate, prefill) {
     const note = el.querySelector('#mNote').value.trim();
     const noExpiry = el.querySelector('#mNoExpiry').checked;
     const expiresAt = noExpiry ? null : durationToMs(+el.querySelector('#mDur').value || 1, el.querySelector('#mUnit').value);
+    const paidVal = el.querySelector('#mPaid').value;
+    const lastPaidAt = paidVal ? new Date(paidVal + 'T12:00:00').getTime() : null;
     el.querySelector('#mSave').disabled = true;
     try {
-      await onCreate({ label, note, expiresAt });
+      await onCreate({ label, note, expiresAt, lastPaidAt });
       el.remove();
     } catch (e2) {
       alert('Could not create the licence: ' + (e2.message || e2));
@@ -81,6 +86,7 @@ export function openKeyRevealModal(rawKey, label) {
 
 export function openEditModal(lic, onSave) {
   const cur = lic.expiresAt ? new Date(+lic.expiresAt).toISOString().slice(0, 10) : '';
+  const paidCur = lic.lastPaidAt ? new Date(+lic.lastPaidAt).toISOString().slice(0, 10) : '';
   const el = overlay(`
     <h3>Edit licence</h3>
     <div class="row">
@@ -93,6 +99,10 @@ export function openEditModal(lic, onSave) {
       <div class="f"><label>Expiry date</label><input type="date" id="mExpiry" value="${cur}"></div>
       <div class="f"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="mNoExpiry" ${lic.expiresAt ? '' : 'checked'}> No expiry</label></div>
     </div>
+    <div class="row">
+      <div class="f"><label>Last paid date</label><input type="date" id="mPaid" value="${paidCur}"></div>
+      <div class="f"><label>&nbsp;</label><button class="ghost" id="mPaidToday" type="button">Mark paid today</button></div>
+    </div>
     <div class="row" style="margin-top:6px">
       <button class="act" id="mSave">Save</button>
       <button class="ghost" id="mCancel">Cancel</button>
@@ -100,6 +110,7 @@ export function openEditModal(lic, onSave) {
   el.querySelector('#mExpiry').disabled = !lic.expiresAt;
   el.querySelector('#mCancel').onclick = () => el.remove();
   el.querySelector('#mNoExpiry').onchange = (e) => { el.querySelector('#mExpiry').disabled = e.target.checked; };
+  el.querySelector('#mPaidToday').onclick = () => { el.querySelector('#mPaid').value = new Date().toISOString().slice(0, 10); };
   el.querySelector('#mSave').onclick = async () => {
     const label = el.querySelector('#mLabel').value.trim();
     if (!label) return alert('Label cannot be empty.');
@@ -107,8 +118,10 @@ export function openEditModal(lic, onSave) {
     const noExpiry = el.querySelector('#mNoExpiry').checked;
     const dateVal = el.querySelector('#mExpiry').value;
     const expiresAt = noExpiry ? null : (dateVal ? new Date(dateVal + 'T23:59:59').getTime() : null);
+    const paidVal = el.querySelector('#mPaid').value;
+    const lastPaidAt = paidVal ? new Date(paidVal + 'T12:00:00').getTime() : null;
     el.querySelector('#mSave').disabled = true;
-    try { await onSave({ label, note, expiresAt }); el.remove(); }
+    try { await onSave({ label, note, expiresAt, lastPaidAt }); el.remove(); }
     catch (e2) { alert('Could not save: ' + (e2.message || e2)); el.querySelector('#mSave').disabled = false; }
   };
 }

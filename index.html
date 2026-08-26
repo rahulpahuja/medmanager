@@ -4,9 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Bill Tracking System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Noto+Sans:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div id="splash" role="dialog" aria-label="Welcome">
+  <div class="sbox">
+    <div class="smark">Rx</div>
+    <h1>Rx License Manager</h1>
+    <p>Medicine Manager &mdash; Bill Tracking System</p>
+    <button id="splashEnter">Enter</button>
+  </div>
+</div>
 <header>
   <h1>Bill Tracking System</h1>
   <div class="sub" id="saveState">&mdash;</div>
@@ -279,6 +290,12 @@
     <div class="card">
       <h2>Software key and device</h2>
       <div class="stat" id="licStat"></div>
+      <div class="tot" id="licDetails" style="display:none"></div>
+      <div class="row" id="licKeyRow" style="display:none;align-items:center">
+        <span class="pill" id="licKeyMasked">Key hidden</span>
+        <button class="ghost" id="licKeyShow">Show</button>
+        <button class="ghost" id="licKeyCopy">Copy key</button>
+      </div>
       <div class="row" style="align-items:flex-end">
         <div class="f"><label>Name of this device</label><input id="licDev"></div>
         <button class="ghost" id="licDevSave">Rename device</button>

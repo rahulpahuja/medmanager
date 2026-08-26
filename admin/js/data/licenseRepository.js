@@ -18,13 +18,14 @@ export function subscribeLicenses(callback) {
   return off;
 }
 
-export async function createLicense({ rawKey, label, note, expiresAt, active = true }) {
+export async function createLicense({ rawKey, label, note, expiresAt, active = true, lastPaidAt }) {
   const hash = keyHash(rawKey);
   await set(ref(db, path(hash)), {
     label: label || 'Unnamed licence',
     note: note || '',
     active,
     expiresAt: expiresAt || null, // epoch ms, or null for no expiry
+    lastPaidAt: lastPaidAt || null, // epoch ms, or null if unknown
     createdAt: Date.now(),
   });
   return hash;
