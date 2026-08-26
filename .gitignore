@@ -1,0 +1,6 @@
+.env
+.env.example
+public/admin/js/config/firebaseConfig.js
+.firebase/
+firebase-debug.log
+database-debug.log

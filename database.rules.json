@@ -1,0 +1,24 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "licenses": {
+      ".read": "auth != null && (auth.token.email === 'therahulpahuja@gmail.com' || auth.token.email === 'rahulpahuja2015@gmail.com')",
+      ".write": "auth != null && (auth.token.email === 'therahulpahuja@gmail.com' || auth.token.email === 'rahulpahuja2015@gmail.com')",
+      "$licenseKey": {
+        ".read": true,
+        "claim": {
+          ".write": true
+        }
+      }
+    },
+    "licenseRequests": {
+      ".read": "auth != null && (auth.token.email === 'therahulpahuja@gmail.com' || auth.token.email === 'rahulpahuja2015@gmail.com')",
+      ".write": "auth != null && (auth.token.email === 'therahulpahuja@gmail.com' || auth.token.email === 'rahulpahuja2015@gmail.com')",
+      "$reqId": {
+        ".write": "!data.exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['name','requestedAt','status']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 200 && newData.child('status').val() === 'pending'"
+      }
+    }
+  }
+}
