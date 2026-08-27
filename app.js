@@ -5,8 +5,11 @@ let fh=null, dirty=false, lastSaved=null, timer=null, fsMsg='';
 const canFS=typeof window.showSaveFilePicker==='function';
 const V={};
 const $=id=>document.getElementById(id);
-const money=n=>'\u20B9'+(+n||0).toLocaleString('en-IN');
-const smoney=n=>(+n<0?'\u2212':'+')+'\u20B9'+Math.abs(+n||0).toLocaleString('en-IN');
+/* round-off: when CFG.round is on, every rupee figure is shown as a whole number,
+   half a rupee and above going up, the rest going down; the stored data is untouched */
+const rup=n=>{n=+n||0;return CFG.round?(n<0?-Math.round(-n):Math.round(n)):n};
+const money=n=>'\u20B9'+rup(n).toLocaleString('en-IN');
+const smoney=n=>(+n<0?'\u2212':'+')+'\u20B9'+rup(Math.abs(+n||0)).toLocaleString('en-IN');
 const gapTxt=n=>n>0?money(n)+' short':n<0?money(-n)+' ahead':'\u2014';
 const dmy=s=>{if(!s)return'\u2014';const p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0]};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -29,7 +32,7 @@ const store={
     return ok;
   }
 };
-const CFG={min:1,on:true,asked:false,name:'',theme:''};
+const CFG={min:1,on:true,asked:false,name:'',theme:'',round:false};
 function applyTheme(){
   if(CFG.theme)document.documentElement.setAttribute('data-theme',CFG.theme);
   else document.documentElement.removeAttribute('data-theme');
@@ -240,6 +243,7 @@ function fsPaint(){
   $('fsNow').textContent=fsMsg==='needperm'?'Reconnect and save now':'Save to file now';
   $('fsNow').disabled=!fh;
   $('fsOn').checked=!!on;
+  $('roundOff').checked=!!CFG.round;
   if(d0!==CFG.min){d0=CFG.min;$('fsMin').value=(m%60===0&&m>=60)?m/60:m;$('fsUnit').value=(m%60===0&&m>=60)?'60':'1'}
   $('fsHint').innerHTML=!canFS
     ? 'Chrome or Edge on a computer can write straight into a file you pick, so your data sits in your own folder and syncs through Google Drive or OneDrive if you keep it there. This browser cannot, so use Download backup JSON above and load it back when you need it.'
@@ -439,6 +443,7 @@ $('fsApply').onclick=async()=>{
   CFG.min=n*u;d0=null;await saveCfg();startTimer();fsPaint();
 };
 $('fsOn').onchange=async()=>{CFG.on=$('fsOn').checked;await saveCfg();startTimer();fsPaint()};
+$('roundOff').onchange=async()=>{CFG.round=$('roundOff').checked;await saveCfg();render()};
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&fh&&dirty)fsWrite()});
 window.addEventListener('pagehide',()=>{if(fh&&dirty)fsWrite()});
 

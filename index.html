@@ -327,6 +327,11 @@
       <div class="hint" id="fsHint"></div>
     </div>
     <div class="card">
+      <h2>Round off amounts</h2>
+      <label class="chk"><input type="checkbox" id="roundOff"> Show every amount rounded to the nearest rupee</label>
+      <div class="hint">Off by default, every amount is shown to the paisa. Turn this on and each rupee figure is rounded to a whole number &mdash; 50 paisa and above goes up to the next rupee, below 50 paisa goes down (so &#8377;1,240.50 becomes &#8377;1,241 and &#8377;1,240.49 becomes &#8377;1,240). Rounding is applied wherever an amount appears &mdash; every list, total, target and summary on screen, and every PDF, PNG and CSV you download &mdash; so the figures always match. Each amount is rounded on its own, so a rounded total can differ by a rupee or two from adding up its rounded lines. Your entries are never altered; switch this off any time to see exact values again.</div>
+    </div>
+    <div class="card">
       <h2>Download backup</h2>
       <div class="row">
         <button class="ghost" id="exp">Download backup JSON (date_time)</button>
