@@ -138,13 +138,14 @@ header .sub{cursor:default}
   body{background:#fff}
   #splash,header,.tabs,.noprint,.exp,.act-col,.ico,.hint{display:none!important}
   main{padding:0;max-width:none}
+  .scroll{overflow:visible!important}
   .card{border:0;padding:0;margin:0 0 18px;break-inside:auto}
   .two{grid-template-columns:1fr 1fr}
   #printHead{display:block;margin-bottom:14px;border-bottom:2px solid #000;padding-bottom:8px}
   #printHead h2{margin:0;font-size:16px;letter-spacing:0;text-transform:none;color:#000}
   #printHead p{margin:3px 0 0;font-size:11px;color:#333}
-  table{font-size:11px}
-  th,td{padding:4px 6px}
+  table{font-size:11px;table-layout:auto}
+  th,td{padding:4px 6px;white-space:normal;overflow-wrap:anywhere}
   tr{break-inside:avoid}
   body.printing .card{display:none!important}
   body.printing .card.print-me{display:block!important}

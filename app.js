@@ -1161,12 +1161,18 @@ function pngOf(title,sub,blocks){
   const fH='bold 12px system-ui,sans-serif',fC='13px ui-monospace,monospace',fF='bold 13px ui-monospace,monospace',
     fT='bold 21px system-ui,sans-serif',fS='12px system-ui,sans-serif',fCap='bold 12px system-ui,sans-serif';
   blocks.forEach(b=>{
-    b.w=b.headers.map((h,i)=>{x.font=fH;let w=x.measureText(h).width;x.font=fC;
-      b.rows.concat(b.foot?[b.foot]:[]).forEach(r=>{const cell=r[i];w=Math.max(w,x.measureText(cell?cell.t:'').width)});
+    b.w=b.headers.map((h,i)=>{x.font=fH;let w=x.measureText(h).width;
+      x.font=fC;b.rows.forEach(r=>{const cell=r[i];w=Math.max(w,x.measureText(cell?cell.t:'').width)});
+      if(b.foot){x.font=fF;w=Math.max(w,x.measureText(b.foot[i]?b.foot[i].t:'').width)}
       return Math.ceil(w)+cp*2});
     b.tw=b.w.reduce((a,v)=>a+v,0);
   });
-  const width=Math.max(460,...blocks.map(b=>b.tw))+pad*2;
+  const footLine='Bill Tracking System · generated '+dmy(today())+' '+new Date().toTimeString().slice(0,5);
+  let textW=460;
+  x.font=fT;textW=Math.max(textW,x.measureText(title).width);
+  x.font=fS;textW=Math.max(textW,x.measureText(sub).width,x.measureText(footLine).width);
+  x.font=fCap;blocks.forEach(b=>{if(b.caption)textW=Math.max(textW,x.measureText(b.caption.toUpperCase()).width)});
+  const width=Math.ceil(Math.max(textW,...blocks.map(b=>b.tw)))+pad*2;
   let height=pad+30+20+10;
   blocks.forEach(b=>{height+=(b.caption?capH:0)+headH+Math.max(1,b.rows.length)*rowH+(b.foot?rowH+6:0)+gap});
   height+=pad-gap+22;
@@ -1203,7 +1209,7 @@ function pngOf(title,sub,blocks){
     y+=gap;
   });
   x.textAlign='left';x.font=fS;x.fillStyle='#7b8a85';
-  x.fillText('Bill Tracking System \u00B7 generated '+dmy(today())+' '+new Date().toTimeString().slice(0,5),pad,height-pad+10);
+  x.fillText(footLine,pad,height-pad+10);
   return c;
 }
 let printJob=0;
