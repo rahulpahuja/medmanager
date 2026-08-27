@@ -818,21 +818,24 @@ function fillSelects(){
   const docs=S.doctors.slice().sort((a,b)=>a.name.localeCompare(b.name));
   const dopts=docs.map(d=>'<option value="'+d.id+'">'+esc(d.name)+(d.city?' \u2014 '+esc(d.city):'')+'</option>').join('');
   ['rDoc','gDoc'].forEach(id=>{const el=$(id),v=el.value;el.innerHTML='<option value="">Select doctor</option>'+dopts;el.value=v;});
-  ['rfDoc','gfDoc','fDoc'].forEach(id=>{const el=$(id),v=el.value;el.innerHTML='<option value="">All doctors</option>'+dopts;
+  ['rfDoc','gfDoc','fDoc'].forEach(id=>{const el=$(id),v=el.value;el.innerHTML=fPh(id,'All doctors')+dopts;
     el.value=docs.some(d=>d.id===v)?v:'';});
-  ['rfParty','fParty'].forEach(id=>{const el=$(id),v=el.value;el.innerHTML='<option value="">All medicals</option>'+
+  ['rfParty','fParty'].forEach(id=>{const el=$(id),v=el.value;el.innerHTML=fPh(id,'All medicals')+
     sorted.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');el.value=sorted.some(p=>p.id===v)?v:'';});
   {const cat=itemCatalog(),el=$('fItem'),v=el.value;
-    el.innerHTML='<option value="">All items</option>'+cat.map(x=>'<option>'+esc(x)+'</option>').join('');
+    el.innerHTML=fPh('fItem','All items')+cat.map(x=>'<option>'+esc(x)+'</option>').join('');
     el.value=cat.indexOf(v)>-1?v:'';}
   {const dc=[...new Set(S.doctors.map(d=>d.city).filter(Boolean))].sort(),el=$('kfCity'),v=el.value;
     el.innerHTML='<option value="">All cities</option>'+dc.map(c=>'<option>'+esc(c)+'</option>').join('');
     el.value=dc.indexOf(v)>-1?v:'';}
   const cities=[...new Set(S.parties.map(p=>p.city).filter(Boolean))].sort();
   ['pfCity','rfCity','fCity'].forEach(id=>{const el=$(id),v=el.value;
-    el.innerHTML='<option value="">All cities</option>'+cities.map(c=>'<option>'+esc(c)+'</option>').join('');
+    el.innerHTML=fPh(id,'All cities')+cities.map(c=>'<option>'+esc(c)+'</option>').join('');
     el.value=cities.indexOf(v)>-1?v:'';});
 }
+/* ledger filter dropdowns show "None selected"; the same selects elsewhere keep "All …" */
+const LEDGER_F=new Set(['fDoc','fParty','fCity','fItem']);
+const fPh=(id,all)=>'<option value="">'+(LEDGER_F.has(id)?'None selected':all)+'</option>';
 
 function render(){
   fillSelects();
@@ -1166,7 +1169,7 @@ function pngOf(title,sub,blocks){
   const fH='bold 12px system-ui,sans-serif',fC='13px ui-monospace,monospace',fF='bold 13px ui-monospace,monospace',
     fT='bold 21px system-ui,sans-serif',fS='12px system-ui,sans-serif',fCap='bold 12px system-ui,sans-serif';
   blocks.forEach(b=>{
-    b.w=b.headers.map((h,i)=>{x.font=fH;let w=x.measureText(h).width;
+    b.w=b.headers.map((h,i)=>{x.font=fH;let w=x.measureText(String(h).toUpperCase()).width;
       x.font=fC;b.rows.forEach(r=>{const cell=r[i];w=Math.max(w,x.measureText(cell?cell.t:'').width)});
       if(b.foot){x.font=fF;w=Math.max(w,x.measureText(b.foot[i]?b.foot[i].t:'').width)}
       return Math.ceil(w)+cp*2});
