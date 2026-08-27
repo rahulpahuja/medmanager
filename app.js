@@ -1173,19 +1173,41 @@ function pngOf(title,sub,blocks){
     b.tw=b.w.reduce((a,v)=>a+v,0);
   });
   const footLine='Bill Tracking System · generated '+dmy(today())+' '+new Date().toTimeString().slice(0,5);
-  let textW=460;
-  x.font=fT;textW=Math.max(textW,x.measureText(title).width);
-  x.font=fS;textW=Math.max(textW,x.measureText(sub).width,x.measureText(footLine).width);
+  /* wrap the title and sub-line so a long name never runs past the canvas edge */
+  const blockW=Math.max(0,...blocks.map(b=>b.tw));
+  const wrapW=Math.min(1100,Math.max(blockW,520));
+  const wrap=(t,font)=>{
+    x.font=font;const lines=[];let ln='';
+    String(t==null?'':t).split(/\s+/).filter(Boolean).forEach(w=>{
+      const test=ln?ln+' '+w:w;
+      if(!ln||x.measureText(test).width<=wrapW){ln=test}
+      else{lines.push(ln);ln=w}
+      while(ln.length>1&&x.measureText(ln).width>wrapW){
+        let k=ln.length;while(k>1&&x.measureText(ln.slice(0,k)).width>wrapW)k--;
+        lines.push(ln.slice(0,k));ln=ln.slice(k);
+      }
+    });
+    if(ln)lines.push(ln);
+    return lines.length?lines:[''];
+  };
+  const tLines=wrap(title,fT),sLines=wrap(sub,fS);
+  x.font=fT;let textW=Math.max(...tLines.map(l=>x.measureText(l).width));
+  x.font=fS;textW=Math.max(textW,x.measureText(footLine).width,...sLines.map(l=>x.measureText(l).width));
   x.font=fCap;blocks.forEach(b=>{if(b.caption)textW=Math.max(textW,x.measureText(b.caption.toUpperCase()).width)});
-  const width=Math.ceil(Math.max(textW,...blocks.map(b=>b.tw)))+pad*2;
-  let height=pad+30+20+10;
+  const width=Math.ceil(Math.max(460,textW,blockW))+pad*2;
+  const tLH=27,sLH=18,headBlock=tLines.length*tLH+6+sLines.length*sLH+14;
+  let height=pad+headBlock;
   blocks.forEach(b=>{height+=(b.caption?capH:0)+headH+Math.max(1,b.rows.length)*rowH+(b.foot?rowH+6:0)+gap});
   height+=pad-gap+22;
   c.width=width*dpr;c.height=height*dpr;x.scale(dpr,dpr);
   x.fillStyle='#fff';x.fillRect(0,0,width,height);
   let y=pad;
-  x.fillStyle='#152420';x.font=fT;x.textBaseline='alphabetic';x.fillText(title,pad,y+18);y+=26;
-  x.font=fS;x.fillStyle='#3d4f49';x.fillText(sub,pad,y+12);y+=26;
+  x.fillStyle='#152420';x.font=fT;x.textBaseline='alphabetic';x.textAlign='left';
+  tLines.forEach(l=>{x.fillText(l,pad,y+18);y+=tLH});
+  y+=6;
+  x.font=fS;x.fillStyle='#3d4f49';
+  sLines.forEach(l=>{x.fillText(l,pad,y+12);y+=sLH});
+  y+=14;
   const colors={due:'#a83a24',paid:'#2f7a3f',muted:'#3d4f49','':'#152420'};
   blocks.forEach(b=>{
     if(b.caption){x.font=fCap;x.fillStyle='#3d4f49';x.fillText(b.caption.toUpperCase(),pad,y+14);y+=capH}
