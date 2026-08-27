@@ -432,11 +432,17 @@ $('frSkip').onclick=()=>firstRunDone();
 $('fsPick').onclick=()=>fsPick();
 $('fsOpen').onclick=()=>fsOpenExisting();
 $('fsStop').onclick=()=>fsStop();
-$('fsNow').onclick=async()=>{
-  if(!fh)return;
-  if(!(await fsPerm(true))){fsMsg='needperm';fsPaint();return}
-  fsMsg='';await fsWrite(true);
-};
+async function saveNow(){
+  const say=m=>{if($('fsBkHint'))$('fsBkHint').textContent=m};
+  if(!fh){say('No data file is linked yet — use "Choose data file" in the Auto-save card above, then this writes straight into it.');return}
+  if(!(await fsPerm(true))){fsMsg='needperm';fsPaint();say('Permission to write to '+CFG.name+' has lapsed — press Reconnect in the Auto-save card.');return}
+  fsMsg='';
+  const ok=await fsWrite(true);
+  say(ok?'Saved all data to '+CFG.name+' at '+new Date().toTimeString().slice(0,8)+'.'
+       :'Could not write to '+CFG.name+' — see the Auto-save card above.');
+}
+$('fsNow').onclick=saveNow;
+$('fsBk').onclick=saveNow;
 $('fsApply').onclick=async()=>{
   const n=+$('fsMin').value,u=+$('fsUnit').value||1;
   if(!n||n<1)return alert('Enter how often to save, as a whole number.');

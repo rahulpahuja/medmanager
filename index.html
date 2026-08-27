@@ -334,11 +334,13 @@
     <div class="card">
       <h2>Download backup</h2>
       <div class="row">
+        <button class="act" id="fsBk">Save to data file now</button>
         <button class="ghost" id="exp">Download backup JSON (date_time)</button>
         <button class="ghost" id="seed">Load sample data</button>
         <button class="ghost warn" id="wipe">Erase all data</button>
       </div>
-      <div class="hint">File is named bts-backup-YYYY-MM-DD_HHMM.json &mdash; one file holding every medical, bill, deposit, doctor, prescription and target. This is a one-off copy; the auto-save file above updates on its own. PDF, PNG and CSV downloads sit at the bottom of each tab.</div>
+      <div class="hint" id="fsBkHint"></div>
+      <div class="hint">&#8220;Save to data file now&#8221; writes every change straight into the data file you linked under Auto-save. File is named bts-backup-YYYY-MM-DD_HHMM.json &mdash; one file holding every medical, bill, deposit, doctor, prescription and target. This is a one-off copy; the auto-save file above updates on its own. PDF, PNG and CSV downloads sit at the bottom of each tab.</div>
     </div>
     <div class="card">
       <h2>Load data from JSON</h2>
