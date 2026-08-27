@@ -1213,6 +1213,7 @@ function pngOf(title,sub,blocks){
   y+=14;
   const colors={due:'#a83a24',paid:'#2f7a3f',muted:'#3d4f49','':'#152420'};
   blocks.forEach(b=>{
+    x.textAlign='left';
     if(b.caption){x.font=fCap;x.fillStyle='#3d4f49';x.fillText(b.caption.toUpperCase(),pad,y+14);y+=capH}
     const cx=[];let acc=pad;b.w.forEach(w=>{cx.push(acc);acc+=w});
     x.font=fH;x.fillStyle='#3d4f49';
