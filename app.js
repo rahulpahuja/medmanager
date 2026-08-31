@@ -13,6 +13,13 @@ const smoney=n=>(+n<0?'\u2212':'+')+'\u20B9'+rup(Math.abs(+n||0)).toLocaleString
 const gapTxt=n=>n>0?money(n)+' short':n<0?money(-n)+' ahead':'\u2014';
 const dmy=s=>{if(!s)return'\u2014';const p=s.split('-');return p[2]+'/'+p[1]+'/'+p[0]};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+let tsSeq=0;
+/* strictly-increasing epoch-ms: a distinct value for every object even when
+   several are stamped inside the same millisecond */
+const nowTs=()=>{const n=Date.now();return tsSeq=n>tsSeq?n:tsSeq+1};
+/* give every stored record a stable creation timestamp; existing ones keep theirs */
+const stampTs=()=>['parties','bills','deposits','doctors','rx','targets','items']
+  .forEach(k=>(S[k]||[]).forEach(o=>{if(o&&o.ts==null)o.ts=nowTs()}));
 const esc=s=>String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 const today=()=>new Date().toISOString().slice(0,10);
 const val=id=>$(id).value.trim();
@@ -61,7 +68,7 @@ const claim=()=>({id:LIC.devId,name:LIC.devName||'Unnamed device',at:Date.now()}
 const ago=ms=>{const m=Math.round(ms/60000);return m<1?'less than a minute ago':m===1?'a minute ago':m+' minutes ago'};
 /* bills and deposits are no longer used by the app; anything already recorded is carried
    through saves and backups untouched so nothing is lost */
-const snapshot=(release)=>({exportedAt:new Date().toISOString(),
+const snapshot=(release)=>(stampTs(),{exportedAt:new Date().toISOString(),
   lic:{hash:LIC.hash,device:release?{id:LIC.devId,name:LIC.devName,at:0}:claim()},
   parties:S.parties,items:S.items,
   doctors:S.doctors,rx:S.rx,targets:S.targets,bills:S.bills,deposits:S.deposits});
@@ -461,6 +468,7 @@ async function load(){
   const raw=await store.get('bts');
   if(raw)try{Object.assign(S,JSON.parse(raw))}catch(e){}
   ['parties','bills','deposits','doctors','rx','targets','items'].forEach(k=>{if(!Array.isArray(S[k]))S[k]=[]});
+  stampTs();
   mem=!(await store.set('bts',JSON.stringify(S)));
   await fsRestore();
   render();
@@ -481,6 +489,7 @@ async function load(){
 }
 async function save(){
   render();
+  stampTs();
   dirty=true;
   if(!mem){if(!(await store.set('bts',JSON.stringify(S))))mem=true}
   fsPaint();
@@ -1326,13 +1335,13 @@ function mergeData(d){
   (d.items||[]).forEach(i=>{
     if(!i||!i.name)return;
     if(findItem(i.name)){skip.i++;return}
-    S.items.push({id:S.items.some(x=>x.id===i.id)?uid():(i.id||uid()),name:i.name,pack:i.pack||'',rate:+i.rate||0,note:i.note||''});add.i++;
+    S.items.push({id:S.items.some(x=>x.id===i.id)?uid():(i.id||uid()),name:i.name,pack:i.pack||'',rate:+i.rate||0,note:i.note||'',ts:+i.ts||nowTs()});add.i++;
   });
   (d.parties||[]).forEach(p=>{
     const hit=S.parties.find(x=>x.name.trim().toLowerCase()===String(p.name).trim().toLowerCase()&&String(x.city).trim().toLowerCase()===String(p.city).trim().toLowerCase());
     if(hit){map[p.id]=hit.id;if(!hit.phone&&p.phone)hit.phone=p.phone;skip.p++;return}
     const id=S.parties.some(x=>x.id===p.id)?uid():p.id;
-    map[p.id]=id;S.parties.push({id,name:p.name,city:p.city,phone:p.phone||''});add.p++;
+    map[p.id]=id;S.parties.push({id,name:p.name,city:p.city,phone:p.phone||'',ts:+p.ts||nowTs()});add.p++;
   });
   (d.bills||[]).forEach(b=>{if(!S.bills.some(x=>x.id===b.id))S.bills.push(b)});
   (d.deposits||[]).forEach(v=>{if(!S.deposits.some(x=>x.id===v.id))S.deposits.push(v)});
@@ -1341,21 +1350,21 @@ function mergeData(d){
       &&String(x.city||'').trim().toLowerCase()===String(k.city||'').trim().toLowerCase());
     if(hit){dmap[k.id]=hit.id;if(!hit.phone&&k.phone)hit.phone=k.phone;skip.k++;return}
     const id=S.doctors.some(x=>x.id===k.id)?uid():k.id;
-    dmap[k.id]=id;S.doctors.push({id,name:k.name,speciality:k.speciality||'',clinic:k.clinic||'',city:k.city||'',phone:k.phone||''});add.k++;
+    dmap[k.id]=id;S.doctors.push({id,name:k.name,speciality:k.speciality||'',clinic:k.clinic||'',city:k.city||'',phone:k.phone||'',ts:+k.ts||nowTs()});add.k++;
   });
   (d.rx||[]).forEach(r=>{
     const did=dmap[r.doctorId]||r.doctorId,pid=map[r.partyId]||r.partyId;
     if(!S.doctors.some(x=>x.id===did)||!S.parties.some(x=>x.id===pid))return;
     const lines=(r.lines||[]).map(l=>({name:l.name||'',qty:+l.qty||0,rate:+l.rate||0,amount:+l.amount||0}));
     if(r.id&&S.rx.some(x=>x.id===r.id)){skip.r++;return}
-    S.rx.push({id:(r.id&&!S.rx.some(x=>x.id===r.id))?r.id:uid(),doctorId:did,partyId:pid,date:r.date,note:r.note||'',lines});add.r++;
+    S.rx.push({id:(r.id&&!S.rx.some(x=>x.id===r.id))?r.id:uid(),doctorId:did,partyId:pid,date:r.date,note:r.note||'',lines,ts:+r.ts||nowTs()});add.r++;
   });
   (d.targets||[]).forEach(t=>{
     const did=dmap[t.doctorId]||t.doctorId;
     if(!S.doctors.some(x=>x.id===did))return;
     if(S.targets.some(x=>x.id===t.id||(x.doctorId===did&&x.start===t.start&&+x.amount===+t.amount&&+x.dur===+t.dur&&x.unit===t.unit))){skip.g++;return}
     S.targets.push({id:S.targets.some(x=>x.id===t.id)?uid():t.id,doctorId:did,amount:+t.amount||0,dur:+t.dur||1,
-      unit:t.unit||'months',start:t.start,note:t.note||'',auto:!!t.auto,rolls:t.rolls||{}});add.g++;
+      unit:t.unit||'months',start:t.start,note:t.note||'',auto:!!t.auto,rolls:t.rolls||{},ts:+t.ts||nowTs()});add.g++;
   });
   return {add,skip};
 }
