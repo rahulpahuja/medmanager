@@ -1347,9 +1347,8 @@ function mergeData(d){
     const did=dmap[r.doctorId]||r.doctorId,pid=map[r.partyId]||r.partyId;
     if(!S.doctors.some(x=>x.id===did)||!S.parties.some(x=>x.id===pid))return;
     const lines=(r.lines||[]).map(l=>({name:l.name||'',qty:+l.qty||0,rate:+l.rate||0,amount:+l.amount||0}));
-    const sig=l=>l.map(x=>x.name+':'+x.amount).join('|');
-    if(S.rx.some(x=>x.id===r.id||(x.doctorId===did&&x.partyId===pid&&x.date===r.date&&sig(x.lines||[])===sig(lines)))){skip.r++;return}
-    S.rx.push({id:S.rx.some(x=>x.id===r.id)?uid():r.id,doctorId:did,partyId:pid,date:r.date,note:r.note||'',lines});add.r++;
+    if(r.id&&S.rx.some(x=>x.id===r.id)){skip.r++;return}
+    S.rx.push({id:(r.id&&!S.rx.some(x=>x.id===r.id))?r.id:uid(),doctorId:did,partyId:pid,date:r.date,note:r.note||'',lines});add.r++;
   });
   (d.targets||[]).forEach(t=>{
     const did=dmap[t.doctorId]||t.doctorId;
