@@ -1060,7 +1060,6 @@ function addLine(l){
     '<div class="f"><label>Amount &#8377;</label><input data-k="amount" class="num" inputmode="decimal" style="min-width:110px"></div>'+
     '<button class="ico d" data-rmline="1" title="Remove medicine">\u2715</button>';
   ['name','qty','rate','amount'].forEach(k=>{const v=l[k];if(v!==undefined&&v!==0&&v!=='')d.querySelector('[data-k="'+k+'"]').value=v});
-  if(l.amount)d.querySelector('[data-k="amount"]').dataset.edited='1';
   $('rxLines').appendChild(d);
   return d;
 }
@@ -1083,15 +1082,16 @@ function lineTot(){
 $('rxLines').addEventListener('input',e=>{
   const k=e.target.dataset.k;if(!k)return;
   const row=e.target.closest('.line'),g=n=>row.querySelector('[data-k="'+n+'"]');
-  const amt=g('amount');
   if(k==='name'){
     const hit=findItem(e.target.value);
     if(hit&&+hit.rate&&!g('rate').value)g('rate').value=hit.rate;
   }
-  if(k==='amount')amt.dataset.edited=amt.value.trim()?'1':'';
-  else{
-    const q=+g('qty').value||0,r=+g('rate').value||0;
-    if(q&&r&&amt.dataset.edited!=='1')amt.value=round2(q*r);
+  const q=+g('qty').value||0,r=+g('rate').value||0;
+  /* amount edited -> rate = amount / qty; anything else -> amount = qty x rate */
+  if(k==='amount'){
+    if(q&&g('amount').value.trim()!=='')g('rate').value=round2((+g('amount').value||0)/q);
+  }else if(q&&r){
+    g('amount').value=round2(q*r);
   }
   lineTot();
 });
