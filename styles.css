@@ -40,7 +40,8 @@ header .sub{font-size:12px;color:#9fb3ac;margin-left:auto}
 }
 main{max-width:1280px;margin:0 auto;padding:18px}
 .tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
-.tabs button{background:var(--card);border:1px solid var(--line);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;color:var(--ink2);transition:background .15s var(--ease),color .15s var(--ease),border-color .15s var(--ease)}
+.tabs button{background:var(--card);border:1px solid var(--line);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;color:var(--ink2);transition:background .15s var(--ease),color .15s var(--ease),border-color .15s var(--ease);display:inline-flex;align-items:center;gap:6px}
+.material-symbols-outlined{font-family:'Material Symbols Outlined';font-size:18px;line-height:1;font-variation-settings:'opsz' 20;pointer-events:none;flex-shrink:0}
 .tabs button:hover{border-color:var(--teal);color:var(--ink)}
 .tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;transition:box-shadow .2s var(--ease)}
@@ -101,6 +102,15 @@ tr.hl{background:var(--hl)}
 .chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2)}
 .chk input{min-width:0;width:16px;height:16px}
 .bar2{padding:8px 12px;font-size:12px;color:var(--ink2);border-top:1px dashed var(--line)}
+.tprog{padding:12px;border-top:1px dashed var(--line)}
+.tprog-track{position:relative;height:20px;background:var(--soft);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.tprog-fill{height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--teal),var(--paid));transition:width .6s var(--ease)}
+.tprog-fill.mid{background:linear-gradient(90deg,#f59e0b,var(--teal))}
+.tprog-fill.low{background:linear-gradient(90deg,#f97316,var(--due))}
+.tprog-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font:700 12px/1 ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;
+  color:var(--ink);text-shadow:0 0 4px var(--card),0 0 4px var(--card),0 0 4px var(--card)}
+.tprog-cap{margin-top:6px;font-size:12px;color:var(--ink2)}
 .ok{color:var(--paid);font-weight:600}
 .ovl{position:fixed;inset:0;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50;animation:ovlIn .18s var(--ease)}
 .ovl .box{background:var(--card);border-radius:10px;max-width:560px;width:100%;padding:22px;border:1px solid var(--line);max-height:90vh;overflow:auto;animation:boxIn .22s var(--ease)}

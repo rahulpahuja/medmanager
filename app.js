@@ -546,7 +546,9 @@ const cls=n=>n>0?'due':(n<0?'muted':'paid');
 
 /* ---------- doctors / prescriptions / targets ---------- */
 const doctor=id=>S.doctors.find(d=>d.id===id)||{name:'\u2014',city:'\u2014'};
-const rxTot=r=>(r.lines||[]).reduce((s,l)=>s+ +l.amount,0);
+const rxGross=r=>(r.lines||[]).reduce((s,l)=>s+ +l.amount,0);
+/* entry value after the whole-entry discount %, then GST % */
+const rxTot=r=>rxGross(r)*(1-(+r.disc||0)/100)*(1+(+r.gst||0)/100);
 const rxQty=r=>(r.lines||[]).reduce((s,l)=>s+ +l.qty,0);
 const rxOf=(did,f,t)=>S.rx.filter(r=>r.doctorId===did&&inRange(r.date,f,t));
 const rxValue=(did,f,t)=>rxOf(did,f,t).reduce((s,r)=>s+rxTot(r),0);
@@ -740,7 +742,8 @@ function statusOf(did){
   if(!ts.length)return 'No target';
   const p=periodsOf(ts[0]).slice(-1)[0];
   if(!p)return 'No target';
-  return (p.gap>0?'Short by '+money(p.gap):p.gap<0?'Ahead by '+money(-p.gap):'On target')+' \u00B7 P'+(p.i+1);
+  const pct=p.eff>0?Math.round(p.ach/p.eff*100):0;
+  return (p.gap>0?'Short by '+money(p.gap):p.gap<0?'Ahead by '+money(-p.gap):'On target')+' \u00B7 P'+(p.i+1)+' \u00B7 '+pct+'%';
 }
 function rxData(){
   const q=val('rfQ').toLowerCase(),did=val('rfDoc'),pid=val('rfParty'),city=val('rfCity'),f=val('rfFrom'),t=val('rfTo'),srt=val('rfSort');
@@ -818,10 +821,16 @@ function paintTargets(D){
         :'<button class="ghost" data-roll="'+t.id+':'+p.i+'">'+(p.rolled?'Rolled \u2713 undo':'Roll into next')+'</button>')+'</td></tr>').join('')
       ||'<tr><td colspan="9" class="empty">No periods to show.</td></tr>';
     const done=c.ps.filter(p=>p.gap<=0).length;
+    const tgt=c.ps.reduce((s,p)=>s+p.base,0),got=c.ps.reduce((s,p)=>s+p.ach,0);
+    const pct=tgt>0?got/tgt*100:0,lvl=pct>=100?'full':pct>=50?'mid':'low';
+    const prog=tgt>0?'<div class="tprog"><div class="tprog-track"><div class="tprog-fill '+lvl+'" style="width:'+
+      Math.min(100,pct).toFixed(1)+'%"></div><span class="tprog-pct">'+Math.round(pct)+'%</span></div>'+
+      '<div class="tprog-cap">of target achieved so far · '+money(got)+' against '+money(tgt)+
+      (c.ps.length>1?' over '+c.ps.length+' periods':'')+'</div></div>':'';
     return '<div class="tcard">'+head+'<div class="scroll"><table><thead><tr><th>Period</th><th>From</th><th>To</th>'+
       '<th class="r">Base target</th><th class="r">Carried in</th><th class="r">Effective target</th><th class="r">Achieved</th>'+
       '<th class="r">Short / surplus</th><th class="act-col noprint">Rollover</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
-      '<div class="bar2">'+done+' of '+c.ps.length+' period'+(c.ps.length===1?'':'s')+' met.</div></div>';
+      prog+'<div class="bar2">'+done+' of '+c.ps.length+' period'+(c.ps.length===1?'':'s')+' met.</div></div>';
   }).join('');
 }
 
@@ -932,13 +941,13 @@ $('tDocs').onclick=e=>{if(e.target.closest('button'))return;const tr=e.target.cl
 /* ---------- edit / delete ---------- */
 function loadParty(id){
   const p=S.parties.find(x=>x.id===id);if(!p)return;
-  editParty=id;$('pName').value=p.name;$('pCity').value=p.city;$('pPhone').value=p.phone||'';
+  editParty=id;$('pName').value=p.name;$('pCity').value=p.city;$('pArea').value=p.area||'';$('pPhone').value=p.phone||'';
   $('partyFormTitle').textContent='Editing '+p.name;$('pSave').textContent='Update medical';
   $('pCancel').style.display='';$('partyCard').classList.add('editing');
   tab('parties');$('partyCard').scrollIntoView({behavior:'smooth',block:'start'});render();
 }
 function clearParty(){
-  editParty=null;$('pName').value=$('pCity').value=$('pPhone').value='';
+  editParty=null;$('pName').value=$('pCity').value=$('pArea').value=$('pPhone').value='';
   $('partyFormTitle').textContent='New medical (one time setup)';$('pSave').textContent='Save medical';
   $('pCancel').style.display='none';$('partyCard').classList.remove('editing');
 }
@@ -1004,30 +1013,47 @@ function addLine(l){
   l=l||{};
   const d=document.createElement('div');d.className='line';
   d.innerHTML='<div class="f" style="flex:1;min-width:200px"><label>Medicine</label><input data-k="name" list="itemCat" placeholder="pick from the list or type a new one"></div>'+
-    '<div class="f"><label>Qty</label><input data-k="qty" class="num" inputmode="numeric" style="min-width:80px"></div>'+
-    '<div class="f"><label>Rate &#8377;</label><input data-k="rate" class="num" inputmode="numeric" style="min-width:90px"></div>'+
-    '<div class="f"><label>Amount &#8377;</label><input data-k="amount" class="num" inputmode="numeric" style="min-width:110px"></div>'+
+    '<div class="f"><label>Qty</label><input data-k="qty" class="num" inputmode="decimal" style="min-width:80px"></div>'+
+    '<div class="f"><label>Rate &#8377;</label><input data-k="rate" class="num" inputmode="decimal" style="min-width:90px"></div>'+
+    '<div class="f"><label>Unit price &#8377;</label><input data-k="unit" class="num" inputmode="decimal" style="min-width:100px"></div>'+
+    '<div class="f"><label>Amount &#8377;</label><input data-k="amount" class="num" inputmode="decimal" style="min-width:110px"></div>'+
     '<button class="ico d" data-rmline="1" title="Remove medicine">\u2715</button>';
-  ['name','qty','rate','amount'].forEach(k=>{const v=l[k];if(v!==undefined&&v!==0&&v!=='')d.querySelector('[data-k="'+k+'"]').value=v});
+  ['name','qty','rate','unit','amount'].forEach(k=>{const v=l[k];if(v!==undefined&&v!==0&&v!=='')d.querySelector('[data-k="'+k+'"]').value=v});
+  if(!l.unit&&+l.qty&&+l.amount)d.querySelector('[data-k="unit"]').value=round2(+l.amount/+l.qty);
+  if(l.amount)d.querySelector('[data-k="amount"]').dataset.edited='1';
   $('rxLines').appendChild(d);
   return d;
 }
+function round2(n){return Math.round((+n||0)*100)/100}
 function readLines(){
   return [...$('rxLines').querySelectorAll('.line')].map(d=>{
     const g=k=>d.querySelector('[data-k="'+k+'"]').value.trim();
-    return {name:g('name'),qty:+g('qty')||0,rate:+g('rate')||0,amount:+g('amount')||0};
+    return {name:g('name'),qty:+g('qty')||0,rate:+g('rate')||0,unit:+g('unit')||0,amount:+g('amount')||0};
   }).filter(l=>l.name||l.amount);
 }
-function lineTot(){$('rxLineTot').textContent=money(readLines().reduce((s,l)=>s+ +l.amount,0))}
+function lineTot(){
+  const sub=readLines().reduce((s,l)=>s+ +l.amount,0);
+  const disc=Math.max(0,+val('rDisc')||0),gst=Math.max(0,+val('rGst')||0);
+  const dAmt=sub*disc/100,taxable=sub-dAmt,gAmt=taxable*gst/100;
+  $('rxSub').textContent=money(sub);
+  $('rxDiscAmt').textContent='\u2212'+money(dAmt);$('rxDiscWrap').hidden=!disc;
+  $('rxGstAmt').textContent='+'+money(gAmt);$('rxGstWrap').hidden=!gst;
+  $('rxLineTot').textContent=money(taxable+gAmt);
+}
 $('rxLines').addEventListener('input',e=>{
   const k=e.target.dataset.k;if(!k)return;
   const row=e.target.closest('.line'),g=n=>row.querySelector('[data-k="'+n+'"]');
+  const amt=g('amount'),unit=g('unit');
   if(k==='name'){
     const hit=findItem(e.target.value);
     if(hit&&+hit.rate&&!g('rate').value)g('rate').value=hit.rate;
   }
-  const q=+g('qty').value||0,r=+g('rate').value||0;
-  if(q&&r&&(k!=='name'||!g('amount').value))g('amount').value=q*r;
+  if(k==='name'||k==='rate'){if(!unit.value.trim()&&+g('rate').value)unit.value=+g('rate').value}
+  if(k==='amount')amt.dataset.edited=amt.value.trim()?'1':'';
+  else if(k==='unit')amt.dataset.edited='';
+  const q=+g('qty').value||0,u=+unit.value||+g('rate').value||0;
+  if(amt.dataset.edited==='1'){if(q)unit.value=round2((+amt.value||0)/q)}
+  else if(q&&u)amt.value=round2(q*u);
   lineTot();
 });
 $('rxLines').addEventListener('click',e=>{
@@ -1041,13 +1067,14 @@ $('rxAdd').onclick=()=>{addLine().querySelector('input').focus()};
 function loadRx(id){
   const r=S.rx.find(x=>x.id===id);if(!r)return;
   editRx=id;$('rDoc').value=r.doctorId;$('rParty').value=r.partyId;$('rDate').value=r.date||today();$('rNote').value=r.note||'';
+  $('rDisc').value=r.disc||'';$('rGst').value=r.gst||'';
   $('rxLines').innerHTML='';(r.lines&&r.lines.length?r.lines:[{}]).forEach(addLine);lineTot();
   $('rxFormTitle').textContent='Editing entry of '+dmy(r.date)+' \u00B7 '+doctor(r.doctorId).name;
   $('rSave').textContent='Update prescription';$('rCancel').style.display='';$('rxCard').classList.add('editing');
   tab('rx');$('rxCard').scrollIntoView({behavior:'smooth',block:'start'});render();
 }
 function clearRx(){
-  editRx=null;$('rNote').value='';$('rxLines').innerHTML='';addLine();lineTot();
+  editRx=null;$('rNote').value='';$('rDisc').value='';$('rGst').value='';$('rxLines').innerHTML='';addLine();lineTot();
   $('rxFormTitle').textContent='New prescription entry';$('rSave').textContent='Save prescription';
   $('rCancel').style.display='none';$('rxCard').classList.remove('editing');
 }
@@ -1097,14 +1124,15 @@ document.body.addEventListener('click',e=>{
 /* ---------- forms ---------- */
 
 $('pSave').onclick=()=>{
-  const name=val('pName'),city=val('pCity'),phone=val('pPhone');
+  const name=val('pName'),city=val('pCity'),area=val('pArea'),phone=val('pPhone');
   if(!name||!city)return alert('Medical name and city are both needed.');
   if(S.parties.some(p=>p.id!==editParty&&p.name.toLowerCase()===name.toLowerCase()&&p.city.toLowerCase()===city.toLowerCase()))
     return alert('That medical already exists in this city.');
-  if(editParty){const p=S.parties.find(x=>x.id===editParty);p.name=name;p.city=city;p.phone=phone;}
-  else S.parties.push({id:uid(),name,city,phone});
+  if(editParty){const p=S.parties.find(x=>x.id===editParty);p.name=name;p.city=city;p.area=area;p.phone=phone;}
+  else S.parties.push({id:uid(),name,city,area,phone});
   clearParty();save();
 };
+['rDisc','rGst'].forEach(id=>$(id).addEventListener('input',lineTot));
 $('rDate').value=today(); $('gStart').value=today(); addLine(); lineTot();
 
 $('iSave').onclick=()=>{
@@ -1135,7 +1163,8 @@ $('rSave').onclick=()=>{
   const bad=lines.find(l=>!l.name);
   if(bad)return alert('Every medicine line needs a name.');
   absorbItems(lines);
-  const rec={doctorId,partyId,date:$('rDate').value||today(),note:val('rNote'),lines};
+  const rec={doctorId,partyId,date:$('rDate').value||today(),note:val('rNote'),
+    disc:Math.max(0,+val('rDisc')||0),gst:Math.max(0,+val('rGst')||0),lines};
   if(editRx)Object.assign(S.rx.find(x=>x.id===editRx),rec);
   else S.rx.push(Object.assign({id:uid()},rec));
   clearRx();save();

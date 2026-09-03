@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Noto+Sans:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -29,13 +30,13 @@
 <main>
   <div id="printHead"><h2 id="phTitle"></h2><p id="phSub"></p></div>
   <div class="tabs">
-    <button data-t="ledger" class="on">Ledger</button>
-    <button data-t="parties">Medicals</button>
-    <button data-t="items">Items</button>
-    <button data-t="doctors">Doctors</button>
-    <button data-t="rx">Prescriptions</button>
-    <button data-t="targets">Targets</button>
-    <button data-t="data">Backup</button>
+    <button data-t="ledger" class="on"><span class="material-symbols-outlined">receipt_long</span>Ledger</button>
+    <button data-t="parties"><span class="material-symbols-outlined">storefront</span>Medicals</button>
+    <button data-t="items"><span class="material-symbols-outlined">inventory_2</span>Items</button>
+    <button data-t="doctors"><span class="material-symbols-outlined">stethoscope</span>Doctors</button>
+    <button data-t="rx"><span class="material-symbols-outlined">prescriptions</span>Prescriptions</button>
+    <button data-t="targets"><span class="material-symbols-outlined">target</span>Targets</button>
+    <button data-t="data"><span class="material-symbols-outlined">backup</span>Backup</button>
   </div>
 
   <!-- LEDGER -->
@@ -81,6 +82,7 @@
       <div class="row">
         <div class="f"><label>Medical name</label><input id="pName" placeholder="shop / chemist name"></div>
         <div class="f"><label>City</label><input id="pCity"></div>
+        <div class="f"><label>Area</label><input id="pArea" placeholder="optional"></div>
         <div class="f"><label>Phone</label><input id="pPhone"></div>
         <button class="act" id="pSave">Save medical</button>
         <button class="ghost" id="pCancel" style="display:none">Cancel edit</button>
@@ -215,16 +217,23 @@
         <div class="f"><label>Medical</label><select id="rParty"></select></div>
         <div class="f"><label>Date</label><input type="date" id="rDate"></div>
         <div class="f"><label>Note</label><input id="rNote" placeholder="optional"></div>
+        <div class="f"><label>Discount %</label><input id="rDisc" class="num" inputmode="decimal" placeholder="0" style="min-width:90px"></div>
+        <div class="f"><label>GST %</label><input id="rGst" class="num" inputmode="decimal" placeholder="0" style="min-width:90px"></div>
       </div>
       <datalist id="itemCat"></datalist>
       <div id="rxLines" style="margin-top:10px"></div>
       <div class="row" style="margin-top:10px;align-items:center">
         <button class="ghost" id="rxAdd">+ Add medicine</button>
-        <div class="count" style="margin-left:0"><b class="num" id="rxLineTot">&#8377;0</b> &nbsp;total for this entry</div>
+        <div class="count" style="margin-left:0">
+          Subtotal <b class="num" id="rxSub">&#8377;0</b>
+          <span id="rxDiscWrap" hidden>&nbsp;&nbsp;Discount <b class="num" id="rxDiscAmt">&#8377;0</b></span>
+          <span id="rxGstWrap" hidden>&nbsp;&nbsp;GST <b class="num" id="rxGstAmt">&#8377;0</b></span>
+          &nbsp;&nbsp;Total <b class="num" id="rxLineTot">&#8377;0</b>
+        </div>
         <button class="act" id="rSave" style="margin-left:auto">Save prescription</button>
         <button class="ghost" id="rCancel" style="display:none">Cancel edit</button>
       </div>
-      <div class="hint">One entry = one doctor, one medical, one date, and as many medicines as you want. Amount fills itself from qty &times; rate, and stays editable if you want to override it.</div>
+      <div class="hint">One entry = one doctor, one medical, one date, and as many medicines as you want. Amount fills itself from qty &times; unit price, and stays editable if you want to override it. Discount % then GST % apply to the whole entry.</div>
     </div>
     <div class="card">
       <h2>Prescriptions</h2>
