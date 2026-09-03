@@ -754,12 +754,14 @@ function rxData(){
     :srt==='doc'?doctor(a.doctorId).name.localeCompare(doctor(b.doctorId).name)
     :srt==='party'?party(a.partyId).name.localeCompare(party(b.partyId).name):(b.date||'').localeCompare(a.date||''));
   const D={title:'Prescriptions',sub:rangeTxt(f,t)+(did?' \u00B7 '+doctor(did).name:'')+(city?' \u00B7 City '+city:'')+(q?' \u00B7 Search "'+val('rfQ')+'"':''),
-    headers:['Date','Doctor','Medical','City','Medicines','Qty','Amount'],aligns:['l','l','l','l','l','r','r'],
+    headers:['Date','Doctor','Medical','City','Medicines','Qty','Discount','Amount'],aligns:['l','l','l','l','l','r','r','r'],
     ids:rows.map(r=>r.id),rowCls:rows.map(r=>editRx===r.id?'hl':''),
     rows:rows.map(r=>[T(dmy(r.date)),T(doctor(r.doctorId).name),T(party(r.partyId).name),T(party(r.partyId).city||'\u2014'),
-      T((r.lines||[]).map(l=>l.name+(+l.qty?' \u00D7'+l.qty:'')).join(', ')||'\u2014'),T(rxQty(r)||'\u2014','','r'),T(money(rxTot(r)),'','r')])};
-  const tv=rows.reduce((s,r)=>s+rxTot(r),0),tq=rows.reduce((s,r)=>s+rxQty(r),0);
-  D.foot=[T('Total, '+rows.length+' entr'+(rows.length===1?'y':'ies')),T(''),T(''),T(''),T(''),T(tq,'','r'),T(money(tv),'','r')];
+      T((r.lines||[]).map(l=>l.name+(+l.qty?' \u00D7'+l.qty:'')).join(', ')||'\u2014'),T(rxQty(r)||'\u2014','','r'),
+      T(+r.disc?r.disc+'% \u00B7 '+money(rxGross(r)*r.disc/100):'\u2014',+r.disc?'due':'','r'),T(money(rxTot(r)),'','r')])};
+  const tv=rows.reduce((s,r)=>s+rxTot(r),0),tq=rows.reduce((s,r)=>s+rxQty(r),0),
+    td=rows.reduce((s,r)=>s+(+r.disc?rxGross(r)*r.disc/100:0),0);
+  D.foot=[T('Total, '+rows.length+' entr'+(rows.length===1?'y':'ies')),T(''),T(''),T(''),T(''),T(tq,'','r'),T(td?money(td):'\u2014','','r'),T(money(tv),'','r')];
   D.sums=[['Entries',rows.length],['Medicine lines',rows.reduce((s,r)=>s+(r.lines||[]).length,0)],['Qty',tq],['Value',money(tv)]];
   D.raw=rows;
   return D;
