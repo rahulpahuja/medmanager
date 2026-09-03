@@ -1050,12 +1050,10 @@ function addLine(l){
   const d=document.createElement('div');d.className='line';
   d.innerHTML='<div class="f" style="flex:1;min-width:200px"><label>Medicine</label><input data-k="name" list="itemCat" placeholder="pick from the list or type a new one"></div>'+
     '<div class="f"><label>Qty</label><input data-k="qty" class="num" inputmode="decimal" style="min-width:80px"></div>'+
-    '<div class="f"><label>Rate &#8377;</label><input data-k="rate" class="num" inputmode="decimal" style="min-width:90px"></div>'+
-    '<div class="f"><label>Unit price &#8377;</label><input data-k="unit" class="num" inputmode="decimal" style="min-width:100px"></div>'+
+    '<div class="f"><label>Rate &#8377; / unit</label><input data-k="rate" class="num" inputmode="decimal" style="min-width:100px"></div>'+
     '<div class="f"><label>Amount &#8377;</label><input data-k="amount" class="num" inputmode="decimal" style="min-width:110px"></div>'+
     '<button class="ico d" data-rmline="1" title="Remove medicine">\u2715</button>';
-  ['name','qty','rate','unit','amount'].forEach(k=>{const v=l[k];if(v!==undefined&&v!==0&&v!=='')d.querySelector('[data-k="'+k+'"]').value=v});
-  if(!l.unit&&+l.qty&&+l.amount)d.querySelector('[data-k="unit"]').value=round2(+l.amount/+l.qty);
+  ['name','qty','rate','amount'].forEach(k=>{const v=l[k];if(v!==undefined&&v!==0&&v!=='')d.querySelector('[data-k="'+k+'"]').value=v});
   if(l.amount)d.querySelector('[data-k="amount"]').dataset.edited='1';
   $('rxLines').appendChild(d);
   return d;
@@ -1064,7 +1062,7 @@ function round2(n){return Math.round((+n||0)*100)/100}
 function readLines(){
   return [...$('rxLines').querySelectorAll('.line')].map(d=>{
     const g=k=>d.querySelector('[data-k="'+k+'"]').value.trim();
-    return {name:g('name'),qty:+g('qty')||0,rate:+g('rate')||0,unit:+g('unit')||0,amount:+g('amount')||0};
+    return {name:g('name'),qty:+g('qty')||0,rate:+g('rate')||0,amount:+g('amount')||0};
   }).filter(l=>l.name||l.amount);
 }
 function lineTot(){
@@ -1079,17 +1077,16 @@ function lineTot(){
 $('rxLines').addEventListener('input',e=>{
   const k=e.target.dataset.k;if(!k)return;
   const row=e.target.closest('.line'),g=n=>row.querySelector('[data-k="'+n+'"]');
-  const amt=g('amount'),unit=g('unit');
+  const amt=g('amount');
   if(k==='name'){
     const hit=findItem(e.target.value);
     if(hit&&+hit.rate&&!g('rate').value)g('rate').value=hit.rate;
   }
-  if(k==='name'||k==='rate'){if(!unit.value.trim()&&+g('rate').value)unit.value=+g('rate').value}
   if(k==='amount')amt.dataset.edited=amt.value.trim()?'1':'';
-  else if(k==='unit')amt.dataset.edited='';
-  const q=+g('qty').value||0,u=+unit.value||+g('rate').value||0;
-  if(amt.dataset.edited==='1'){if(q)unit.value=round2((+amt.value||0)/q)}
-  else if(q&&u)amt.value=round2(q*u);
+  else{
+    const q=+g('qty').value||0,r=+g('rate').value||0;
+    if(q&&r&&amt.dataset.edited!=='1')amt.value=round2(q*r);
+  }
   lineTot();
 });
 $('rxLines').addEventListener('click',e=>{
