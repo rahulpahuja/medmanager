@@ -942,7 +942,13 @@ document.querySelectorAll('.tabs button[data-t]').forEach(b=>b.onclick=()=>{
     if(k==='clear')expr='';
     else if(k==='back')expr=expr.slice(0,-1);
     else if(k==='eq'){const r=evalExpr(expr);if(r==null){expr='';disp.value='Error';return}expr=r;}
-    else if(k==='pct')expr=expr.replace(/(\d*\.?\d+)$/,m=>String(parseFloat(m)/100));
+    else if(k==='pct'){
+      /* like a pocket calculator: 300-10% -> 300-(300*10/100) -> 270; a bare 10% -> 0.1 */
+      const m=expr.match(/^(.*?)([-+*/])(\d*\.?\d+)$/);
+      const ne=m?((m[2]==='+'||m[2]==='-')?m[1]+m[2]+'('+m[1]+')*'+m[3]+'/100':m[1]+m[2]+'('+m[3]+'/100)')
+        :expr.replace(/(\d*\.?\d+)$/,'($1/100)');
+      const r=evalExpr(ne);if(r!=null)expr=r;
+    }
     else if('+-*/'.includes(k)){if(!expr&&k!=='-')return;expr=/[-+*/]$/.test(expr)?expr.slice(0,-1)+k:expr+k;}
     else if(k==='.'){const seg=expr.split(/[-+*/]/).pop();if(!seg.includes('.'))expr+=seg===''?'0.':'.';}
     else expr+=k;
