@@ -917,10 +917,40 @@ function detail(){
     ['Last entry',dmy(pRx(openParty,f,t).map(r=>r.date).sort().pop())]]);
 }
 
-document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
-  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+document.querySelectorAll('.tabs button[data-t]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button[data-t]').forEach(x=>x.classList.toggle('on',x===b));
   ['ledger','parties','items','doctors','rx','targets','data'].forEach(t=>$('v-'+t).style.display=(t===b.dataset.t)?'':'none');
 });
+
+/* ---------- pocket calculator ---------- */
+(function(){
+  let expr='';
+  const disp=$('calcDisplay'),panel=$('calcPanel'),toggle=$('calcToggle');
+  const pretty=s=>s.replace(/\*/g,'×').replace(/\//g,'÷');
+  const show=()=>disp.value=pretty(expr||'0');
+  const evalExpr=s=>{
+    if(!/^[-+*/.\d()\s]+$/.test(s))return null;
+    try{const r=Function('"use strict";return('+s+')')();
+      return typeof r==='number'&&isFinite(r)?String(Math.round(r*1e10)/1e10):null;}
+    catch(e){return null}
+  };
+  const press=k=>{
+    if(k==='clear')expr='';
+    else if(k==='back')expr=expr.slice(0,-1);
+    else if(k==='eq'){const r=evalExpr(expr);if(r==null){expr='';disp.value='Error';return}expr=r;}
+    else if(k==='pct')expr=expr.replace(/(\d*\.?\d+)$/,m=>String(parseFloat(m)/100));
+    else if('+-*/'.includes(k)){if(!expr&&k!=='-')return;expr=/[-+*/]$/.test(expr)?expr.slice(0,-1)+k:expr+k;}
+    else if(k==='.'){const seg=expr.split(/[-+*/]/).pop();if(!seg.includes('.'))expr+=seg===''?'0.':'.';}
+    else expr+=k;
+    show();
+  };
+  panel.addEventListener('click',e=>{const b=e.target.closest('[data-calc]');if(b)press(b.dataset.calc)});
+  const open=v=>{panel.hidden=!v;toggle.classList.toggle('on',v);toggle.setAttribute('aria-expanded',v)};
+  toggle.onclick=()=>open(panel.hidden);
+  document.addEventListener('click',e=>{if(!panel.hidden&&!panel.contains(e.target)&&!toggle.contains(e.target))open(false)});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!panel.hidden)open(false)});
+  show();
+})();
 
 /* ---------- filters ---------- */
 const LF=['fDoc','fParty','fCity','fItem','fQ','fFrom','fTo','fGroup','fSort','pfQ','pfCity','pfFrom','pfTo','pfSort',

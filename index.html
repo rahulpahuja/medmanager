@@ -37,6 +37,31 @@
     <button data-t="rx"><span class="material-symbols-outlined">prescriptions</span>Prescriptions</button>
     <button data-t="targets"><span class="material-symbols-outlined">target</span>Targets</button>
     <button data-t="data"><span class="material-symbols-outlined">backup</span>Backup</button>
+    <button type="button" id="calcToggle" class="calc-toggle noprint" title="Calculator" aria-label="Toggle calculator" aria-expanded="false"><span class="material-symbols-outlined">calculate</span></button>
+    <div id="calcPanel" class="calc-panel noprint" hidden>
+      <input id="calcDisplay" class="calc-display num" value="0" readonly aria-label="Calculator display">
+      <div class="calc-grid">
+        <button type="button" class="calc-fn" data-calc="clear">C</button>
+        <button type="button" class="calc-fn" data-calc="back">&#9003;</button>
+        <button type="button" class="calc-fn" data-calc="pct">%</button>
+        <button type="button" class="calc-op" data-calc="/">&divide;</button>
+        <button type="button" data-calc="7">7</button>
+        <button type="button" data-calc="8">8</button>
+        <button type="button" data-calc="9">9</button>
+        <button type="button" class="calc-op" data-calc="*">&times;</button>
+        <button type="button" data-calc="4">4</button>
+        <button type="button" data-calc="5">5</button>
+        <button type="button" data-calc="6">6</button>
+        <button type="button" class="calc-op" data-calc="-">&minus;</button>
+        <button type="button" data-calc="1">1</button>
+        <button type="button" data-calc="2">2</button>
+        <button type="button" data-calc="3">3</button>
+        <button type="button" class="calc-op" data-calc="+">+</button>
+        <button type="button" class="calc-zero" data-calc="0">0</button>
+        <button type="button" data-calc=".">.</button>
+        <button type="button" class="calc-eq" data-calc="eq">=</button>
+      </div>
+    </div>
   </div>
 
   <!-- LEDGER -->

@@ -39,11 +39,23 @@ header .sub{font-size:12px;color:#9fb3ac;margin-left:auto}
   :root:not([data-theme="light"]) .theme-toggle .i-sun{display:block}
 }
 main{max-width:1280px;margin:0 auto;padding:18px}
-.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;position:relative}
 .tabs button{background:var(--card);border:1px solid var(--line);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;color:var(--ink2);transition:background .15s var(--ease),color .15s var(--ease),border-color .15s var(--ease);display:inline-flex;align-items:center;gap:6px}
 .material-symbols-outlined{font-family:'Material Symbols Outlined';font-size:18px;line-height:1;font-variation-settings:'opsz' 20;pointer-events:none;flex-shrink:0}
 .tabs button:hover{border-color:var(--teal);color:var(--ink)}
 .tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.calc-toggle{margin-left:auto;padding:8px 10px}
+.calc-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:60;width:232px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;box-shadow:0 10px 30px rgba(15,23,42,.18)}
+.calc-display{width:100%;text-align:right;font-size:20px;padding:10px;margin-bottom:8px;border:1px solid var(--line);border-radius:6px;background:var(--soft);color:var(--ink);min-width:0}
+.calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.calc-grid button{padding:12px 0;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font-size:15px;cursor:pointer;gap:0;justify-content:center;transition:background .12s var(--ease),transform .08s var(--ease)}
+.calc-grid button:hover{background:var(--soft);border-color:var(--line)}
+.calc-grid button:active{transform:scale(.96)}
+.calc-grid .calc-op{color:var(--teal);font-weight:700}
+.calc-grid .calc-fn{color:var(--ink2)}
+.calc-grid .calc-eq{background:var(--teal);color:#fff;border-color:var(--teal)}
+.calc-grid .calc-eq:hover{filter:brightness(1.1);background:var(--teal)}
+.calc-grid .calc-zero{grid-column:span 2}
 .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;transition:box-shadow .2s var(--ease)}
 .card h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink2);font-weight:700}
 .card.editing{border-color:var(--edit);box-shadow:inset 0 0 0 1px var(--edit)}
