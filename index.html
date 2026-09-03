@@ -16,7 +16,7 @@
     <div class="smark">Rx</div>
     <h1>Rx License Manager</h1>
     <p>Medicine Manager &mdash; Bill Tracking System</p>
-    <button id="splashEnter">Enter</button>
+    <button id="splashEnter" data-icon="login">Enter</button>
   </div>
 </div>
 <header>
@@ -86,16 +86,16 @@
           <option value="dateD">Date, newest first</option><option value="dateA">Date, oldest first</option>
           <option value="valD">Value, high to low</option><option value="qtyD">Quantity, high to low</option><option value="name">Name</option>
         </select></div>
-        <button class="ghost" id="fClear">Clear filters</button>
+        <button class="ghost" id="fClear" data-icon="filter_alt_off">Clear filters</button>
         <div class="count" id="fCount"></div>
       </div>
       <div class="scroll"><table id="tLedger"></table></div>
       <div class="tot" id="totals"></div>
       <div class="hint">Every medicine a doctor has written to a medical, down to the line. Switch &#8220;Show as&#8221; to roll the same rows up by doctor, by medical, by item, or by each doctor-and-medical pairing.</div>
       <div class="exp">
-        <button class="ghost" data-x="ledger-pdf">Download PDF</button>
-        <button class="ghost" data-x="ledger-png">Download PNG</button>
-        <button class="ghost" data-x="ledger-csv">Download CSV</button>
+        <button class="ghost" data-x="ledger-pdf" data-icon="picture_as_pdf">Download PDF</button>
+        <button class="ghost" data-x="ledger-png" data-icon="image">Download PNG</button>
+        <button class="ghost" data-x="ledger-csv" data-icon="table_view">Download CSV</button>
       </div>
     </div>
   </section>
@@ -103,18 +103,18 @@
   <!-- MEDICALS -->
   <section id="v-parties" style="display:none">
     <div class="card noprint" id="partyCard">
-      <h2 id="partyFormTitle">New medical (one time setup)</h2>
+      <h2 id="partyFormTitle" data-icon="add_business">New medical (one time setup)</h2>
       <div class="row">
         <div class="f"><label>Medical name</label><input id="pName" placeholder="shop / chemist name"></div>
         <div class="f"><label>City</label><input id="pCity"></div>
         <div class="f"><label>Area</label><input id="pArea" placeholder="optional"></div>
         <div class="f"><label>Phone</label><input id="pPhone"></div>
-        <button class="act" id="pSave">Save medical</button>
-        <button class="ghost" id="pCancel" style="display:none">Cancel edit</button>
+        <button class="act" id="pSave" data-icon="save">Save medical</button>
+        <button class="ghost" id="pCancel" data-icon="close" style="display:none">Cancel edit</button>
       </div>
     </div>
     <div class="card">
-      <h2>Medical directory</h2>
+      <h2 data-icon="storefront">Medical directory</h2>
       <div class="bar noprint">
         <div class="f"><label>Search</label><input id="pfQ" placeholder="name, city, phone"></div>
         <div class="f"><label>City</label><select id="pfCity"><option value="">All cities</option></select></div>
@@ -124,26 +124,26 @@
           <option value="valD">Value prescribed, high to low</option><option value="name">Medical name</option>
           <option value="city">City</option><option value="rxD">Prescription count</option>
         </select></div>
-        <button class="ghost" id="pfClear">Clear filters</button>
+        <button class="ghost" id="pfClear" data-icon="filter_alt_off">Clear filters</button>
         <div class="count" id="pfCount"></div>
       </div>
       <div class="scroll"><table id="tAllParties"></table></div>
       <div class="hint">Click a row to open everything prescribed to that medical. Deleting a medical removes its prescription entries too. You will be asked to confirm.</div>
       <div class="exp">
-        <button class="ghost" data-x="parties-pdf">Download PDF</button>
-        <button class="ghost" data-x="parties-png">Download PNG</button>
-        <button class="ghost" data-x="parties-csv">Download CSV</button>
+        <button class="ghost" data-x="parties-pdf" data-icon="picture_as_pdf">Download PDF</button>
+        <button class="ghost" data-x="parties-png" data-icon="image">Download PNG</button>
+        <button class="ghost" data-x="parties-csv" data-icon="table_view">Download CSV</button>
       </div>
     </div>
 
     <div class="card" id="detailCard" style="display:none">
-      <h2 id="detailName"></h2>
+      <h2 id="detailName" data-icon="receipt_long"></h2>
       <div class="scroll"><table id="tPartyRx"></table></div>
       <div class="tot" id="detailTot"></div>
       <div class="exp">
-        <button class="ghost" data-x="party-pdf">Download medical statement PDF</button>
-        <button class="ghost" data-x="party-png">Download medical statement PNG</button>
-        <button class="ghost warn noprint" id="delPartyAll">Delete this medical and all its data</button>
+        <button class="ghost" data-x="party-pdf" data-icon="picture_as_pdf">Download medical statement PDF</button>
+        <button class="ghost" data-x="party-png" data-icon="image">Download medical statement PNG</button>
+        <button class="ghost warn noprint" id="delPartyAll" data-icon="delete_forever">Delete this medical and all its data</button>
       </div>
     </div>
   </section>
@@ -151,19 +151,19 @@
   <!-- ITEMS -->
   <section id="v-items" style="display:none">
     <div class="card noprint" id="itemCard">
-      <h2 id="itemFormTitle">New item</h2>
+      <h2 id="itemFormTitle" data-icon="add_box">New item</h2>
       <div class="row">
         <div class="f" style="flex:1;min-width:200px"><label>Item name</label><input id="iName" placeholder="Med A"></div>
         <div class="f"><label>Pack / unit</label><input id="iPack" placeholder="10 x 10 strip"></div>
         <div class="f"><label>Default rate &#8377;</label><input id="iRate" class="num" inputmode="numeric" placeholder="0"></div>
         <div class="f"><label>Company / note</label><input id="iNote" placeholder="optional"></div>
-        <button class="act" id="iSave">Save item</button>
-        <button class="ghost" id="iCancel" style="display:none">Cancel edit</button>
+        <button class="act" id="iSave" data-icon="save">Save item</button>
+        <button class="ghost" id="iCancel" data-icon="close" style="display:none">Cancel edit</button>
       </div>
       <div class="hint">Anything saved here shows up in the item list on the bill form and the medicine list on the prescription form. A default rate fills itself into a bill row the moment you pick the item, and you can still change it on that row.</div>
     </div>
     <div class="card">
-      <h2>Item collection</h2>
+      <h2 data-icon="inventory_2">Item collection</h2>
       <div class="bar noprint">
         <div class="f"><label>Search</label><input id="ifQ" placeholder="item, pack, company"></div>
         <div class="f"><label>From date</label><input type="date" id="ifFrom"></div>
@@ -172,15 +172,15 @@
           <option value="valD">Value prescribed, high to low</option><option value="name">Item name</option>
           <option value="qtyD">Quantity prescribed, high to low</option><option value="rxD">Number of lines, high to low</option>
         </select></div>
-        <button class="ghost" id="ifClear">Clear filters</button>
+        <button class="ghost" id="ifClear" data-icon="filter_alt_off">Clear filters</button>
         <div class="count" id="ifCount"></div>
       </div>
       <div class="scroll"><table id="tItems"></table></div>
       <div class="hint">Quantities and values count the date range above. Deleting an item takes it out of this list only &mdash; prescriptions already written keep their rows untouched. Any medicine name you type straight into a prescription is added here on its own.</div>
       <div class="exp">
-        <button class="ghost" data-x="items-pdf">Download PDF</button>
-        <button class="ghost" data-x="items-png">Download PNG</button>
-        <button class="ghost" data-x="items-csv">Download CSV</button>
+        <button class="ghost" data-x="items-pdf" data-icon="picture_as_pdf">Download PDF</button>
+        <button class="ghost" data-x="items-png" data-icon="image">Download PNG</button>
+        <button class="ghost" data-x="items-csv" data-icon="table_view">Download CSV</button>
       </div>
     </div>
   </section>
@@ -188,19 +188,19 @@
   <!-- DOCTORS -->
   <section id="v-doctors" style="display:none">
     <div class="card noprint" id="docCard">
-      <h2 id="docFormTitle">New doctor</h2>
+      <h2 id="docFormTitle" data-icon="person_add">New doctor</h2>
       <div class="row">
         <div class="f"><label>Doctor name</label><input id="kName" placeholder="Dr. R. Sharma"></div>
         <div class="f"><label>Speciality</label><input id="kSpec" placeholder="Physician"></div>
         <div class="f"><label>Clinic / hospital</label><input id="kClinic"></div>
         <div class="f"><label>City</label><input id="kCity"></div>
         <div class="f"><label>Phone</label><input id="kPhone"></div>
-        <button class="act" id="kSave">Save doctor</button>
-        <button class="ghost" id="kCancel" style="display:none">Cancel edit</button>
+        <button class="act" id="kSave" data-icon="save">Save doctor</button>
+        <button class="ghost" id="kCancel" data-icon="close" style="display:none">Cancel edit</button>
       </div>
     </div>
     <div class="card">
-      <h2>Doctor directory</h2>
+      <h2 data-icon="stethoscope">Doctor directory</h2>
       <div class="bar noprint">
         <div class="f"><label>Search</label><input id="kfQ" placeholder="name, speciality, clinic, phone"></div>
         <div class="f"><label>City</label><select id="kfCity"><option value="">All cities</option></select></div>
@@ -210,25 +210,30 @@
           <option value="valD">Value prescribed, high to low</option><option value="name">Doctor name</option>
           <option value="city">City</option><option value="rxD">Prescription count</option>
         </select></div>
-        <button class="ghost" id="kfClear">Clear filters</button>
+        <button class="ghost" id="kfClear" data-icon="filter_alt_off">Clear filters</button>
         <div class="count" id="kfCount"></div>
       </div>
       <div class="scroll"><table id="tDocs"></table></div>
       <div class="hint">Value prescribed counts every medicine line written by the doctor to any medical inside the date range. Deleting a doctor also deletes that doctor&#8217;s prescriptions and targets.</div>
       <div class="exp">
-        <button class="ghost" data-x="doctors-pdf">Download PDF</button>
-        <button class="ghost" data-x="doctors-png">Download PNG</button>
-        <button class="ghost" data-x="doctors-csv">Download CSV</button>
+        <button class="ghost" data-x="doctors-pdf" data-icon="picture_as_pdf">Download PDF</button>
+        <button class="ghost" data-x="doctors-png" data-icon="image">Download PNG</button>
+        <button class="ghost" data-x="doctors-csv" data-icon="table_view">Download CSV</button>
       </div>
     </div>
 
     <div class="card" id="docDetail" style="display:none">
-      <h2 id="docDetailName"></h2>
+      <h2 id="docDetailName" data-icon="badge"></h2>
+      <div class="bar noprint">
+        <div class="f"><label>From date</label><input type="date" id="ddFrom"></div>
+        <div class="f"><label>To date</label><input type="date" id="ddTo"></div>
+        <button class="ghost" id="ddClear" data-icon="filter_alt_off">Clear dates</button>
+      </div>
       <div class="scroll"><table id="tDocRx"></table></div>
       <div class="tot" id="docDetailTot"></div>
       <div class="exp">
-        <button class="ghost" data-x="doctor-pdf">Download doctor statement PDF</button>
-        <button class="ghost" data-x="doctor-png">Download doctor statement PNG</button>
+        <button class="ghost" data-x="doctor-pdf" data-icon="picture_as_pdf">Download doctor statement PDF</button>
+        <button class="ghost" data-x="doctor-png" data-icon="image">Download doctor statement PNG</button>
       </div>
     </div>
   </section>
@@ -236,7 +241,7 @@
   <!-- PRESCRIPTIONS -->
   <section id="v-rx" style="display:none">
     <div class="card noprint" id="rxCard">
-      <h2 id="rxFormTitle">New prescription entry</h2>
+      <h2 id="rxFormTitle" data-icon="note_add">New prescription entry</h2>
       <div class="row">
         <div class="f"><label>Doctor</label><select id="rDoc"></select></div>
         <div class="f"><label>Medical</label><select id="rParty"></select></div>
@@ -248,20 +253,20 @@
       <datalist id="itemCat"></datalist>
       <div id="rxLines" style="margin-top:10px"></div>
       <div class="row" style="margin-top:10px;align-items:center">
-        <button class="ghost" id="rxAdd">+ Add medicine</button>
+        <button class="ghost" id="rxAdd" data-icon="add">Add medicine</button>
         <div class="count" style="margin-left:0">
           Subtotal <b class="num" id="rxSub">&#8377;0</b>
           <span id="rxDiscWrap" hidden>&nbsp;&nbsp;Discount <b class="num" id="rxDiscAmt">&#8377;0</b></span>
           <span id="rxGstWrap" hidden>&nbsp;&nbsp;GST <b class="num" id="rxGstAmt">&#8377;0</b></span>
           &nbsp;&nbsp;Total <b class="num" id="rxLineTot">&#8377;0</b>
         </div>
-        <button class="act" id="rSave" style="margin-left:auto">Save prescription</button>
-        <button class="ghost" id="rCancel" style="display:none">Cancel edit</button>
+        <button class="act" id="rSave" data-icon="save" style="margin-left:auto">Save prescription</button>
+        <button class="ghost" id="rCancel" data-icon="close" style="display:none">Cancel edit</button>
       </div>
       <div class="hint">One entry = one doctor, one medical, one date, and as many medicines as you want. Amount fills itself from qty &times; unit price, and stays editable if you want to override it. Discount % then GST % apply to the whole entry.</div>
     </div>
     <div class="card">
-      <h2>Prescriptions</h2>
+      <h2 data-icon="prescriptions">Prescriptions</h2>
       <div class="bar noprint">
         <div class="f"><label>Search</label><input id="rfQ" placeholder="medicine, doctor, medical, note"></div>
         <div class="f"><label>Doctor</label><select id="rfDoc"><option value="">All doctors</option></select></div>
@@ -273,15 +278,15 @@
           <option value="dateD">Date, newest first</option><option value="dateA">Date, oldest first</option>
           <option value="amtD">Amount, high to low</option><option value="doc">Doctor name</option><option value="party">Medical name</option>
         </select></div>
-        <button class="ghost" id="rfClear">Clear filters</button>
+        <button class="ghost" id="rfClear" data-icon="filter_alt_off">Clear filters</button>
         <div class="count" id="rfCount"></div>
       </div>
       <div class="scroll"><table id="tRx"></table></div>
       <div class="exp">
-        <button class="ghost" data-x="rx-pdf">Download PDF</button>
-        <button class="ghost" data-x="rx-png">Download PNG</button>
-        <button class="ghost" data-x="rx-csv">Download CSV</button>
-        <button class="ghost" data-x="rxlines-csv">Download CSV, one row per medicine</button>
+        <button class="ghost" data-x="rx-pdf" data-icon="picture_as_pdf">Download PDF</button>
+        <button class="ghost" data-x="rx-png" data-icon="image">Download PNG</button>
+        <button class="ghost" data-x="rx-csv" data-icon="table_view">Download CSV</button>
+        <button class="ghost" data-x="rxlines-csv" data-icon="table_view">Download CSV, one row per medicine</button>
       </div>
     </div>
   </section>
@@ -289,7 +294,7 @@
   <!-- TARGETS -->
   <section id="v-targets" style="display:none">
     <div class="card noprint" id="tgCard">
-      <h2 id="tgFormTitle">New target</h2>
+      <h2 id="tgFormTitle" data-icon="flag">New target</h2>
       <div class="row">
         <div class="f"><label>Doctor</label><select id="gDoc"></select></div>
         <div class="f"><label>Target amount &#8377;</label><input id="gAmt" class="num" inputmode="numeric" placeholder="200000"></div>
@@ -298,27 +303,27 @@
         <div class="f"><label>Start date</label><input type="date" id="gStart"></div>
         <div class="f"><label>Label / remark</label><input id="gNote" placeholder="e.g. Q3 scheme, monsoon push"></div>
         <div class="f"><label>&nbsp;</label><label class="chk"><input type="checkbox" id="gAuto"> Roll over every next period</label></div>
-        <button class="act" id="gSave">Save target</button>
-        <button class="ghost" id="gCancel" style="display:none">Cancel edit</button>
+        <button class="act" id="gSave" data-icon="save">Save target</button>
+        <button class="ghost" id="gCancel" data-icon="close" style="display:none">Cancel edit</button>
       </div>
       <div class="hint">The target amount repeats every period. Periods run from your start date onward in blocks of the duration you set. Tick the box to carry every shortfall or surplus into the next period automatically, or leave it off and use the &#8220;Roll into next&#8221; button on any single period below.</div>
     </div>
     <div class="card">
-      <h2>Target tracking</h2>
+      <h2 data-icon="target">Target tracking</h2>
       <div class="bar noprint">
         <div class="f"><label>Doctor</label><select id="gfDoc"><option value="">All doctors</option></select></div>
         <div class="f"><label>Show</label><select id="gfShow">
           <option value="all">All periods</option><option value="run">Up to current period</option><option value="cur">Current period only</option>
         </select></div>
-        <button class="ghost" id="gfClear">Clear filters</button>
+        <button class="ghost" id="gfClear" data-icon="filter_alt_off">Clear filters</button>
         <div class="count" id="gfCount"></div>
       </div>
       <div id="tgList"></div>
       <div class="hint">Achieved = value of everything that doctor prescribed, across all medicals, inside the period dates. Carried in is what a previous period pushed forward: a positive figure raises this period&#8217;s target, a negative one is surplus credit and lowers it.</div>
       <div class="exp">
-        <button class="ghost" data-x="targets-pdf">Download PDF</button>
-        <button class="ghost" data-x="targets-png">Download PNG</button>
-        <button class="ghost" data-x="targets-csv">Download CSV</button>
+        <button class="ghost" data-x="targets-pdf" data-icon="picture_as_pdf">Download PDF</button>
+        <button class="ghost" data-x="targets-png" data-icon="image">Download PNG</button>
+        <button class="ghost" data-x="targets-csv" data-icon="table_view">Download CSV</button>
       </div>
     </div>
   </section>
@@ -326,58 +331,58 @@
   <!-- DATA -->
   <section id="v-data" style="display:none">
     <div class="card">
-      <h2>Software key and device</h2>
+      <h2 data-icon="key">Software key and device</h2>
       <div class="stat" id="licStat"></div>
       <div class="tot" id="licDetails" style="display:none"></div>
       <div class="row" id="licKeyRow" style="display:none;align-items:center">
         <span class="pill" id="licKeyMasked">Key hidden</span>
-        <button class="ghost" id="licKeyShow">Show</button>
-        <button class="ghost" id="licKeyCopy">Copy key</button>
+        <button class="ghost" id="licKeyShow" data-icon="visibility">Show</button>
+        <button class="ghost" id="licKeyCopy" data-icon="content_copy">Copy key</button>
       </div>
       <div class="row" style="align-items:flex-end">
         <div class="f"><label>Name of this device</label><input id="licDev"></div>
-        <button class="ghost" id="licDevSave">Rename device</button>
-        <button class="ghost" id="licChange">Change key</button>
-        <button class="ghost warn" id="licRelease">Release this device</button>
+        <button class="ghost" id="licDevSave" data-icon="drive_file_rename_outline">Rename device</button>
+        <button class="ghost" id="licChange" data-icon="vpn_key">Change key</button>
+        <button class="ghost warn" id="licRelease" data-icon="logout">Release this device</button>
       </div>
       <div class="hint">The key must be a software key issued by your administrator; it is checked against the licence server on activation and every 30 seconds after, so a revoked or expired key signs this device out on its own within moments. Only one device may hold that key at a time &mdash; this one keeps its claim alive automatically, and the claim lapses after 10 minutes of silence so another device can pick it up. Release it yourself when you are done for the day.</div>
     </div>
 
     <div class="card">
-      <h2>Auto-save to a data file</h2>
+      <h2 data-icon="sync">Auto-save to a data file</h2>
       <div class="stat" id="fsStat"></div>
       <div class="row" style="align-items:flex-end">
-        <button class="ghost" id="fsPick">Choose data file</button>
-        <button class="ghost" id="fsOpen">Open an existing data file</button>
-        <button class="ghost" id="fsNow">Save to file now</button>
-        <button class="ghost warn" id="fsStop" style="display:none">Stop using this file</button>
+        <button class="ghost" id="fsPick" data-icon="folder_open">Choose data file</button>
+        <button class="ghost" id="fsOpen" data-icon="folder_open">Open an existing data file</button>
+        <button class="ghost" id="fsNow" data-icon="save">Save to file now</button>
+        <button class="ghost warn" id="fsStop" data-icon="stop_circle" style="display:none">Stop using this file</button>
       </div>
       <div class="row" style="align-items:flex-end;margin-top:12px">
         <div class="f"><label>Auto-save every</label><input id="fsMin" class="num" inputmode="numeric" style="min-width:90px"></div>
         <div class="f"><label>&nbsp;</label><select id="fsUnit"><option value="1">Minutes</option><option value="60">Hours</option></select></div>
-        <button class="ghost" id="fsApply">Apply</button>
+        <button class="ghost" id="fsApply" data-icon="check">Apply</button>
         <label class="chk" style="margin-left:8px"><input type="checkbox" id="fsOn"> Auto-save switched on</label>
       </div>
       <div class="hint" id="fsHint"></div>
     </div>
     <div class="card">
-      <h2>Round off amounts</h2>
+      <h2 data-icon="functions">Round off amounts</h2>
       <label class="chk"><input type="checkbox" id="roundOff"> Show every amount rounded to the nearest rupee</label>
       <div class="hint">Off by default, every amount is shown to the paisa. Turn this on and each rupee figure is rounded to a whole number &mdash; 50 paisa and above goes up to the next rupee, below 50 paisa goes down (so &#8377;1,240.50 becomes &#8377;1,241 and &#8377;1,240.49 becomes &#8377;1,240). Rounding is applied wherever an amount appears &mdash; every list, total, target and summary on screen, and every PDF, PNG and CSV you download &mdash; so the figures always match. Each amount is rounded on its own, so a rounded total can differ by a rupee or two from adding up its rounded lines. Your entries are never altered; switch this off any time to see exact values again.</div>
     </div>
     <div class="card">
-      <h2>Download backup</h2>
+      <h2 data-icon="download">Download backup</h2>
       <div class="row">
-        <button class="act" id="fsBk">Save to data file now</button>
-        <button class="ghost" id="exp">Download backup JSON (date_time)</button>
-        <button class="ghost" id="seed">Load sample data</button>
-        <button class="ghost warn" id="wipe">Erase all data</button>
+        <button class="act" id="fsBk" data-icon="save">Save to data file now</button>
+        <button class="ghost" id="exp" data-icon="download">Download backup JSON (date_time)</button>
+        <button class="ghost" id="seed" data-icon="science">Load sample data</button>
+        <button class="ghost warn" id="wipe" data-icon="delete_forever">Erase all data</button>
       </div>
       <div class="hint" id="fsBkHint"></div>
       <div class="hint">&#8220;Save to data file now&#8221; writes every change straight into the data file you linked under Auto-save. File is named bts-backup-YYYY-MM-DD_HHMM.json &mdash; one file holding every medical, bill, deposit, doctor, prescription and target. This is a one-off copy; the auto-save file above updates on its own. PDF, PNG and CSV downloads sit at the bottom of each tab.</div>
     </div>
     <div class="card">
-      <h2>Load data from JSON</h2>
+      <h2 data-icon="upload_file">Load data from JSON</h2>
       <div class="row" style="align-items:flex-end">
         <div class="f"><label>How to load</label>
           <select id="impMode">
@@ -385,33 +390,33 @@
             <option value="replace">Replace everything with these files</option>
           </select>
         </div>
-        <label class="act" style="cursor:pointer;padding:9px 16px">Choose file(s) and load<input type="file" id="imp" accept=".json,application/json" multiple hidden></label>
+        <label class="act" data-icon="upload" style="cursor:pointer;padding:9px 16px">Choose file(s) and load<input type="file" id="imp" accept=".json,application/json" multiple hidden></label>
       </div>
       <div class="hint">Pick one file or several at once &mdash; hold Ctrl (Windows) or Cmd (Mac) while clicking. All chosen files load together. Merge keeps what is already here and skips records already present; Replace clears everything first.</div>
       <div id="impReport"></div>
       <div class="hint" id="dataHint"></div>
     </div>
     <div class="card">
-      <h2>Current data</h2>
+      <h2 data-icon="database">Current data</h2>
       <div class="tot" id="dataTot" style="border-top:0;margin:0;padding:0"></div>
     </div>
   </section>
 </main>
 
 <div class="ovl" id="actWrap" style="display:none;z-index:60"><div class="box">
-  <h3 id="actTitle">Set the key for this software</h3>
+  <h3 id="actTitle" data-icon="key">Set the key for this software</h3>
   <p id="actText">The key locks this copy to you. Every device that opens the same data file has to use the same key, and only one of them can have the file open at a time.</p>
   <div class="row">
     <div class="f" style="flex:1;min-width:200px"><label>Software key</label><input id="actKey" type="password" placeholder="type any key you will remember"></div>
     <div class="f"><label>Name this device</label><input id="actDev" placeholder="Front counter PC"></div>
-    <button class="act" id="actGo">Activate</button>
+    <button class="act" id="actGo" data-icon="check_circle">Activate</button>
   </div>
   <div class="hint" id="actHint" style="margin-top:12px"></div>
   <p style="margin-top:14px;font-size:13px"><a href="#" id="actReqLink">Don't have a key? Request one</a></p>
 </div></div>
 
 <div class="ovl" id="reqWrap" style="display:none;z-index:65"><div class="box">
-  <h3>Request a software key</h3>
+  <h3 data-icon="mail">Request a software key</h3>
   <p>Tell us who you are and we'll email a key to you once it's approved.</p>
   <div class="row">
     <div class="f" style="flex:1;min-width:200px"><label>Name</label><input id="reqName" placeholder="your name"></div>
@@ -427,34 +432,34 @@
     <div class="f" style="flex:1;min-width:200px"><label>Note (optional)</label><input id="reqNote" placeholder="anything else worth knowing"></div>
   </div>
   <div class="row">
-    <button class="act" id="reqSend">Send request</button>
-    <button class="ghost" id="reqCancel">Cancel</button>
+    <button class="act" id="reqSend" data-icon="send">Send request</button>
+    <button class="ghost" id="reqCancel" data-icon="close">Cancel</button>
   </div>
   <div class="hint" id="reqHint" style="margin-top:12px"></div>
 </div></div>
 
 <div class="ovl" id="lockWrap" style="display:none;z-index:70"><div class="box">
-  <h3 id="lockTitle">In use on another device</h3>
+  <h3 id="lockTitle" data-icon="lock">In use on another device</h3>
   <p id="lockText"></p>
   <div class="row" id="lockKeyRow" style="display:none">
     <div class="f" style="flex:1;min-width:200px"><label>Key for this data file</label><input id="lockKey" type="password"></div>
-    <button class="act" id="lockUnlock">Unlock</button>
+    <button class="act" id="lockUnlock" data-icon="lock_open">Unlock</button>
   </div>
   <div class="row">
-    <button class="act" id="lockRetry">Check again</button>
-    <button class="ghost" id="lockTake">Use this device instead</button>
-    <button class="ghost" id="lockDetach">Work without the file</button>
+    <button class="act" id="lockRetry" data-icon="refresh">Check again</button>
+    <button class="ghost" id="lockTake" data-icon="devices">Use this device instead</button>
+    <button class="ghost" id="lockDetach" data-icon="link_off">Work without the file</button>
   </div>
   <div class="hint" style="margin-top:12px">Taking over hands the file to this device. The other device stops saving into it the moment it notices, so do this only when you know nobody else is working.</div>
 </div></div>
 
 <div class="ovl" id="firstRun" style="display:none"><div class="box">
-  <h3>Where should this file save your data?</h3>
+  <h3 data-icon="folder_open">Where should this file save your data?</h3>
   <p id="frText"></p>
   <div class="row">
-    <button class="act" id="frPick">Choose a data file</button>
-    <button class="ghost" id="frOpen">Open an existing data file</button>
-    <button class="ghost" id="frSkip">Not now, keep it on this device</button>
+    <button class="act" id="frPick" data-icon="folder_open">Choose a data file</button>
+    <button class="ghost" id="frOpen" data-icon="folder_open">Open an existing data file</button>
+    <button class="ghost" id="frSkip" data-icon="close">Not now, keep it on this device</button>
   </div>
   <div class="hint" id="frHint" style="margin-top:14px"></div>
 </div></div>

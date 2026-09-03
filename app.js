@@ -887,21 +887,25 @@ function docDetail(){
   const c=$('docDetail');
   if(!openDoc||!S.doctors.some(d=>d.id===openDoc)){c.style.display='none';return}
   c.style.display='';
-  const d=doctor(openDoc),f=val('kfFrom'),t=val('kfTo');
+  const d=doctor(openDoc),f=val('ddFrom'),t=val('ddTo');
   $('docDetailName').textContent=d.name+(d.speciality?' \u00B7 '+d.speciality:'')+(d.city?' \u00B7 '+d.city:'')+(d.phone?' \u00B7 '+d.phone:'');
   paint('tDocRx',docRxData(openDoc),{empty:'Nothing prescribed in this date range.'});
   $('docDetailTot').innerHTML=fmtSum([['Entries',rxOf(openDoc,f,t).length],['Medicals covered',medicalsOf(openDoc,f,t)],
     ['Value prescribed',money(rxValue(openDoc,f,t))],['Target',statusOf(openDoc)]]);
 }
 function docRxData(did){
-  const f=val('kfFrom'),t=val('kfTo');
+  const f=val('ddFrom'),t=val('ddTo');
   const rows=rxOf(did,f,t).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const note=rows.some(r=>(r.note||'').trim());
   const D={title:'Doctor statement \u2014 '+doctor(did).name,sub:rangeTxt(f,t),
-    headers:['Date','Medical','City','Medicine','Qty','Rate','Amount'],aligns:['l','l','l','l','r','r','r'],ids:[],rows:[]};
+    headers:['Date','Medical','City','Medicine','Qty','Rate','Amount'].concat(note?['Note']:[]),
+    aligns:['l','l','l','l','r','r','r'].concat(note?['l']:[]),ids:[],rows:[]};
   rows.forEach(r=>(r.lines||[]).forEach((l,li)=>{D.ids.push(r.id);
     D.rows.push([T(li?'':dmy(r.date)),T(li?'':party(r.partyId).name),T(li?'':(party(r.partyId).city||'\u2014')),
-      T(l.name),T(l.qty||'\u2014','','r'),T(+l.rate?money(l.rate):'\u2014','','r'),T(money(l.amount),'','r')])}));
-  D.foot=[T('Total, '+rows.length+' entr'+(rows.length===1?'y':'ies')),T(''),T(''),T(''),T(''),T(''),T(money(rxValue(did,f,t)),'','r')];
+      T(l.name),T(l.qty||'\u2014','','r'),T(+l.rate?money(l.rate):'\u2014','','r'),T(money(l.amount),'','r')]
+      .concat(note?[T(li?'':(r.note||''))]:[]))}));
+  D.foot=[T('Total, '+rows.length+' entr'+(rows.length===1?'y':'ies')),T(''),T(''),T(''),T(''),T(''),T(money(rxValue(did,f,t)),'','r')]
+    .concat(note?[T('')]:[]);
   return D;
 }
 
@@ -954,7 +958,7 @@ document.querySelectorAll('.tabs button[data-t]').forEach(b=>b.onclick=()=>{
 
 /* ---------- filters ---------- */
 const LF=['fDoc','fParty','fCity','fItem','fQ','fFrom','fTo','fGroup','fSort','pfQ','pfCity','pfFrom','pfTo','pfSort',
-  'ifQ','ifFrom','ifTo','ifSort','kfQ','kfCity','kfFrom','kfTo','kfSort','rfQ','rfDoc','rfParty','rfCity','rfFrom','rfTo','rfSort','gfDoc','gfShow'];
+  'ifQ','ifFrom','ifTo','ifSort','kfQ','kfCity','kfFrom','kfTo','kfSort','ddFrom','ddTo','rfQ','rfDoc','rfParty','rfCity','rfFrom','rfTo','rfSort','gfDoc','gfShow'];
 LF.forEach(id=>{const el=$(id);el.oninput=render;el.onchange=render});
 function clearF(ids){ids.forEach(i=>{const el=$(i);el.value=el.tagName==='SELECT'?el.options[0].value:''});render()}
 $('fClear').onclick=()=>clearF(['fDoc','fParty','fCity','fItem','fQ','fFrom','fTo']);
@@ -966,7 +970,9 @@ $('gfClear').onclick=()=>clearF(['gfDoc','gfShow']);
 $('tAllParties').onclick=e=>{if(e.target.closest('button'))return;const tr=e.target.closest('tr[data-p]');if(!tr)return;
   openParty=tr.dataset.p;detail();$('detailCard').scrollIntoView({behavior:'smooth',block:'start'})};
 $('tDocs').onclick=e=>{if(e.target.closest('button'))return;const tr=e.target.closest('tr[data-p]');if(!tr)return;
-  openDoc=tr.dataset.p;docDetail();$('docDetail').scrollIntoView({behavior:'smooth',block:'start'})};
+  openDoc=tr.dataset.p;$('ddFrom').value=val('kfFrom');$('ddTo').value=val('kfTo');
+  docDetail();$('docDetail').scrollIntoView({behavior:'smooth',block:'start'})};
+$('ddClear').onclick=()=>{$('ddFrom').value=$('ddTo').value='';render()};
 
 /* ---------- edit / delete ---------- */
 function loadParty(id){

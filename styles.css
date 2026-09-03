@@ -42,6 +42,13 @@ main{max-width:1280px;margin:0 auto;padding:18px}
 .tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;position:relative}
 .tabs button{background:var(--card);border:1px solid var(--line);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:14px;color:var(--ink2);transition:background .15s var(--ease),color .15s var(--ease),border-color .15s var(--ease);display:inline-flex;align-items:center;gap:6px}
 .material-symbols-outlined{font-family:'Material Symbols Outlined';font-size:18px;line-height:1;font-variation-settings:'opsz' 20;pointer-events:none;flex-shrink:0}
+[data-icon]::before{font-family:'Material Symbols Outlined';content:attr(data-icon);
+  font-size:1.15em;line-height:1;vertical-align:-.18em;margin-right:.38em;
+  text-transform:none;letter-spacing:normal;font-weight:normal;font-style:normal;
+  font-variation-settings:'opsz' 20;font-feature-settings:'liga';-webkit-font-feature-settings:'liga';
+  -webkit-font-smoothing:antialiased;pointer-events:none;white-space:nowrap}
+h2[data-icon],h3[data-icon]{display:flex;align-items:center}
+h2[data-icon]::before,h3[data-icon]::before{color:var(--teal);vertical-align:0}
 .tabs button:hover{border-color:var(--teal);color:var(--ink)}
 .tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .calc-toggle{margin-left:auto;padding:8px 10px}
