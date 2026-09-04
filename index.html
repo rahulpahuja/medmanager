@@ -244,15 +244,15 @@
       <div class="tot" id="docIncTot"></div>
 
       <h3 data-icon="percent">Sales incentive rate</h3>
-      <div class="row">
+      <div class="row noprint">
         <div class="f"><label>Current rate (% of sales)</label><input id="icRate" class="num" inputmode="decimal"></div>
         <button class="act" id="icRateSave" data-icon="save">Update rate</button>
       </div>
       <div class="scroll"><table id="tIncHist"></table></div>
       <div class="hint">Every change to the rate is kept with the date it was made. The rate in force on a prescription&#8217;s date is the one used to work out incentive earned on it &#8212; and the first rate you set also covers everything prescribed before that date. Uses the From / To dates above for the range figures.</div>
 
-      <h3 data-icon="add_card">Record an incentive payment</h3>
-      <div class="row">
+      <h3 data-icon="add_card" class="noprint">Record an incentive payment</h3>
+      <div class="row noprint">
         <div class="f"><label>Amount paid</label><input id="ipAmt" class="num" inputmode="decimal"></div>
         <div class="f"><label>Paid via</label><select id="ipVia">
           <option>Cash</option><option>UPI</option><option>Bank transfer</option><option>Cheque</option><option>Adjustment</option><option>Other</option>
@@ -264,13 +264,20 @@
         <button class="act" id="ipSave" data-icon="save">Save payment</button>
         <button class="ghost" id="ipCancel" data-icon="close" style="display:none">Cancel edit</button>
       </div>
-      <div class="hint" id="ipShotName"></div>
+      <div class="hint noprint" id="ipShotName"></div>
       <div class="bar noprint" style="margin-top:8px">
         <button class="ghost" id="icDirPick" data-icon="folder">Choose screenshots folder</button>
         <span class="hint" id="icDirName" style="margin-top:0"></span>
       </div>
+
+      <h3 data-icon="receipt_long">Payment ledger</h3>
       <div class="scroll"><table id="tInc"></table></div>
-      <div class="hint">Click a payment row to open its screenshot. Deleting a payment leaves any file already written to the folder untouched. The doctor statement download in the card above now includes an incentive summary and this ledger.</div>
+      <div class="hint">Click a payment row to open its screenshot. Deleting a payment leaves any file already written to the folder untouched.</div>
+      <div class="exp">
+        <button class="ghost" data-x="incentive-pdf" data-icon="picture_as_pdf">Download incentive PDF</button>
+        <button class="ghost" data-x="incentive-png" data-icon="image">Download incentive PNG</button>
+        <button class="ghost" data-x="incentive-csv" data-icon="table_view">Download incentive CSV</button>
+      </div>
     </div>
   </section>
 

@@ -1581,6 +1581,28 @@ function doctorBlocks(){
   }
   return {name:d.name,city:d.city||'',phone:d.phone||'',blocks};
 }
+/* the sales-incentive statement: summary, rate history and the payment ledger */
+function incentiveBlocks(){
+  const d=doctor(openDoc),f=val('ddFrom'),t=val('ddTo');
+  const eA=incEarned(openDoc),pA=incPaid(openDoc);
+  const summary={caption:'Summary',
+    headers:['Rate now','Earned (range)','Paid (range)','Earned (all time)','Paid (all time)','Balance to pay'],
+    aligns:['r','r','r','r','r','r'],
+    rows:[[T(commPctOn(d,today())+'%','','r'),T(money(incEarned(openDoc,f,t)),'','r'),T(money(incPaid(openDoc,f,t)),'','r'),
+      T(money(eA),'','r'),T(money(pA),'','r'),T(money(eA-pA),cls(eA-pA),'r')]]};
+  const H=incHistData(d),L=incLedgerData(openDoc);
+  return {name:d.name,city:d.city||'',phone:d.phone||'',
+    subDs:[summary,{caption:'Rate change history',...H},{caption:'Payment ledger',...L}],
+    blocks:[summary,{caption:'Rate change history',headers:H.headers,aligns:H.aligns,rows:H.rows},
+      {caption:'Payment ledger',headers:L.headers,aligns:L.aligns,rows:L.rows,foot:L.foot}]};
+}
+function incentiveCsv(P){
+  const body=D=>csvOf(D).replace(/^\ufeff/,'');
+  const line=s=>'"'+String(s).replace(/"/g,'""')+'"';
+  const out=[line('Sales incentive — '+P.name+(P.city?' · '+P.city:'')),line(rangeTxt(val('ddFrom'),val('ddTo'))),''];
+  P.subDs.forEach(D=>{out.push(line(D.caption),body(D),'')});
+  return '\ufeff'+out.join('\r\n');
+}
 function exportIt(what,card){
   const [which,fmt]=what.split('-');
   if(which==='doctor'){
@@ -1596,6 +1618,15 @@ function exportIt(what,card){
     if(fmt==='pdf')return printOut('Medical statement \u2014 '+title,sub,card);
     const c=pngOf('Medical statement \u2014 '+title,sub,P.blocks);
     return dl(c.toDataURL('image/png'),'bts-'+P.name.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+stamp()+'.png');
+  }
+  if(which==='incentive'){
+    if(!openDoc)return;
+    const P=incentiveBlocks(),title=P.name+(P.city?' \u00B7 '+P.city:''),sub=rangeTxt(val('ddFrom'),val('ddTo'))+(P.phone?' \u00B7 '+P.phone:'');
+    const fn='bts-incentive-'+P.name.replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+stamp();
+    if(fmt==='csv')return dl(URL.createObjectURL(new Blob([incentiveCsv(P)],{type:'text/csv;charset=utf-8'})),fn+'.csv');
+    if(fmt==='pdf')return printOut('Sales incentive \u2014 '+title,sub,card);
+    const c=pngOf('Sales incentive \u2014 '+title,sub,P.blocks);
+    return dl(c.toDataURL('image/png'),fn+'.png');
   }
   const D=V[which];if(!D)return;
   const base='bts-'+which+'-'+stamp();
