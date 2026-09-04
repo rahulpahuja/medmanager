@@ -65,6 +65,7 @@ h2[data-icon]::before,h3[data-icon]::before{color:var(--teal);vertical-align:0}
 .calc-grid .calc-zero{grid-column:span 2}
 .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px;transition:box-shadow .2s var(--ease)}
 .card h2{margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink2);font-weight:700}
+.card h3{margin:20px 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--ink2);font-weight:700}
 .card.editing{border-color:var(--edit);box-shadow:inset 0 0 0 1px var(--edit)}
 .row{display:flex;flex-wrap:wrap;gap:10px}
 .f{display:flex;flex-direction:column;gap:4px}

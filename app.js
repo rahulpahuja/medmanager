@@ -1,6 +1,6 @@
-const S={parties:[],bills:[],deposits:[],doctors:[],rx:[],targets:[],items:[]};
+const S={parties:[],bills:[],deposits:[],doctors:[],rx:[],targets:[],items:[],incentives:[]};
 let mem=null, openParty=null, editParty=null;
-let openDoc=null, editDoc=null, editRx=null, editTg=null, editItem=null;
+let openDoc=null, editDoc=null, editRx=null, editTg=null, editItem=null, editInc=null;
 let fh=null, dirty=false, lastSaved=null, timer=null, fsMsg='';
 const canFS=typeof window.showSaveFilePicker==='function';
 const V={};
@@ -18,7 +18,7 @@ let tsSeq=0;
    several are stamped inside the same millisecond */
 const nowTs=()=>{const n=Date.now();return tsSeq=n>tsSeq?n:tsSeq+1};
 /* give every stored record a stable creation timestamp; existing ones keep theirs */
-const stampTs=()=>['parties','bills','deposits','doctors','rx','targets','items']
+const stampTs=()=>['parties','bills','deposits','doctors','rx','targets','items','incentives']
   .forEach(k=>(S[k]||[]).forEach(o=>{if(o&&o.ts==null)o.ts=nowTs()}));
 const esc=s=>String(s==null?'':s).replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 const today=()=>new Date().toISOString().slice(0,10);
@@ -71,7 +71,7 @@ const ago=ms=>{const m=Math.round(ms/60000);return m<1?'less than a minute ago':
 const snapshot=(release)=>(stampTs(),{exportedAt:new Date().toISOString(),
   lic:{hash:LIC.hash,device:release?{id:LIC.devId,name:LIC.devName,at:0}:claim()},
   parties:S.parties,items:S.items,
-  doctors:S.doctors,rx:S.rx,targets:S.targets,bills:S.bills,deposits:S.deposits});
+  doctors:S.doctors,rx:S.rx,targets:S.targets,incentives:S.incentives,bills:S.bills,deposits:S.deposits});
 const saveCfg=()=>store.set('btscfg',JSON.stringify(CFG));
 
 /* ---------- Firebase-backed device claim: enforces "one device per key" over the
@@ -149,6 +149,61 @@ async function idbDel(k){const db=await idb();return new Promise((res,rej)=>{
   const t=db.transaction('h','readwrite');t.objectStore('h').delete(k);t.oncomplete=()=>res(1);t.onerror=()=>rej(t.error)})}
 
 async function fsRestore(){try{const h=await idbGet('fh');if(h)fh=h}catch(e){}}
+
+/* ---------- screenshots folder for incentive payments ---------- */
+let shotDir=null;
+const canDir=typeof window.showDirectoryPicker==='function';
+async function shotDirRestore(){try{const h=await idbGet('shotdir');if(h)shotDir=h}catch(e){}}
+async function shotDirPerm(ask){
+  if(!shotDir)return false;
+  try{
+    if(shotDir.queryPermission){const p=await shotDir.queryPermission({mode:'readwrite'});if(p==='granted')return true}
+    if(ask&&shotDir.requestPermission)return (await shotDir.requestPermission({mode:'readwrite'}))==='granted';
+    return !shotDir.queryPermission;
+  }catch(e){return false}
+}
+const shotSlug=s=>String(s||'').trim().replace(/[^a-z0-9]+/gi,'-').replace(/^-+|-+$/g,'').toLowerCase()||'unnamed';
+/* writes the file under <folder>/<doctor slug>/<date>_<id>.<ext> and returns the stored reference */
+async function saveShot(file,docName){
+  if(!(await shotDirPerm(true)))throw new Error('folder access not granted');
+  const folder=shotSlug(docName);
+  const dir=await shotDir.getDirectoryHandle(folder,{create:true});
+  const ext=(String(file.name).match(/\.[a-z0-9]+$/i)||['.png'])[0];
+  const base=today()+'_'+Date.now().toString(36)+ext;
+  const h=await dir.getFileHandle(base,{create:true});
+  const w=await h.createWritable();await w.write(file);await w.close();
+  return {name:file.name,path:folder+'/'+base};
+}
+async function openShot(rec){
+  try{
+    if(rec.shotData){const w=window.open();if(w){w.document.title=rec.shotName||'screenshot';
+      w.document.body.style.margin='0';w.document.body.innerHTML='<img src="'+rec.shotData+'" style="max-width:100%">'}return}
+    if(rec.shot&&rec.shot.path){
+      if(!shotDir)return alert('Choose the screenshots folder again to view this (button in the incentive card).');
+      if(!(await shotDirPerm(true)))return alert('Access to the screenshots folder was declined.');
+      const [folder,base]=rec.shot.path.split('/');
+      const dir=await shotDir.getDirectoryHandle(folder);
+      const f=await (await dir.getFileHandle(base)).getFile();
+      const url=URL.createObjectURL(f);window.open(url,'_blank');
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }
+  }catch(e){alert('Could not open the screenshot: '+(e.message||e))}
+}
+const fileToDataURL=file=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(file)});
+function renderShotDir(){
+  const el=$('icDirName');if(!el)return;
+  el.textContent=!canDir?'This browser keeps screenshots inside the data file instead of a folder.'
+    :shotDir?('Screenshots go into “'+(shotDir.name||'chosen folder')+'”, one sub-folder per doctor.')
+    :'No folder chosen — screenshots are kept inside the data until you pick one.';
+}
+async function shotDirPick(){
+  if(!canDir)return;
+  try{
+    shotDir=await window.showDirectoryPicker({id:'medman-shots',mode:'readwrite'});
+    try{await idbPut('shotdir',shotDir)}catch(e){}
+    renderShotDir();
+  }catch(e){if(e&&e.name!=='AbortError')alert('Could not open the folder picker: '+(e.message||e))}
+}
 async function fsPerm(ask){
   if(!fh)return false;
   try{
@@ -208,7 +263,7 @@ async function fsOpenExisting(){
     const has=S.parties.length||S.items.length||S.doctors.length||S.rx.length||S.targets.length;
     if(has&&confirm('This device already holds data.\n\nOK = replace it with what is in '+h.name+
       '\nCancel = merge the file into what is already here'))
-      {S.parties=[];S.bills=[];S.deposits=[];S.doctors=[];S.rx=[];S.targets=[];S.items=[];}
+      {S.parties=[];S.bills=[];S.deposits=[];S.doctors=[];S.rx=[];S.targets=[];S.items=[];S.incentives=[];}
     mergeData(d);
     fh=h;CFG.name=h.name;CFG.asked=true;CFG.on=true;
     try{await idbPut('fh',h)}catch(e){}
@@ -467,10 +522,11 @@ async function load(){
   if(!LIC.devId){LIC.devId=newDevId();await saveLic()}
   const raw=await store.get('bts');
   if(raw)try{Object.assign(S,JSON.parse(raw))}catch(e){}
-  ['parties','bills','deposits','doctors','rx','targets','items'].forEach(k=>{if(!Array.isArray(S[k]))S[k]=[]});
+  ['parties','bills','deposits','doctors','rx','targets','items','incentives'].forEach(k=>{if(!Array.isArray(S[k]))S[k]=[]});
   stampTs();
   mem=!(await store.set('bts',JSON.stringify(S)));
   await fsRestore();
+  await shotDirRestore();
   render();
   licPaint();fsPaint();
   if(LIC.hash){
@@ -553,6 +609,23 @@ const rxQty=r=>(r.lines||[]).reduce((s,l)=>s+ +l.qty,0);
 const rxOf=(did,f,t)=>S.rx.filter(r=>r.doctorId===did&&inRange(r.date,f,t));
 const rxValue=(did,f,t)=>rxOf(did,f,t).reduce((s,r)=>s+rxTot(r),0);
 const medicalsOf=(did,f,t)=>new Set(rxOf(did,f,t).map(r=>r.partyId)).size;
+
+/* ---------- sales incentive ---------- */
+const commHistSorted=d=>(((d&&d.commHist)||[]).slice()
+  .sort((a,b)=>(a.on||'').localeCompare(b.on||'')||(+a.ts||0)-(+b.ts||0)));
+/* the incentive rate in force on a date: the latest change dated on or before it;
+   the very first rate also covers everything prescribed before that date */
+function commPctOn(d,date){
+  const h=commHistSorted(d);
+  if(!h.length)return +((d&&d.commPct))||0;
+  let pct=+h[0].pct||0;
+  for(const e of h){if((e.on||'')<=date)pct=+e.pct||0;else break}
+  return pct;
+}
+const incOf=did=>S.incentives.filter(x=>x.doctorId===did);
+const incEarned=(did,f,t)=>rxOf(did,f,t).reduce((s,r)=>s+rxTot(r)*commPctOn(doctor(did),r.date)/100,0);
+const incPaid=(did,f,t)=>incOf(did).filter(x=>inRange(x.date,f,t)).reduce((s,x)=>s+(+x.amount||0),0);
+const incBalance=did=>incEarned(did)-incPaid(did);
 function shiftDay(s,n){const d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
 function addSpan(s,n,unit){
   const d=new Date(s+'T00:00:00');
@@ -728,13 +801,15 @@ function doctorsData(){
   rows.sort((a,b)=>srt==='name'?a.name.localeCompare(b.name):srt==='city'?((a.city||'')+a.name).localeCompare((b.city||'')+b.name)
     :srt==='rxD'?rxOf(b.id,f,t).length-rxOf(a.id,f,t).length:rxValue(b.id,f,t)-rxValue(a.id,f,t));
   const D={title:'Doctor directory',sub:rangeTxt(f,t)+(city?' \u00B7 City '+city:'')+(q?' \u00B7 Search "'+val('kfQ')+'"':''),
-    headers:['Doctor','Speciality','Clinic','City','Phone','Medicals','Entries','Value prescribed','Target status'],
-    aligns:['l','l','l','l','l','r','r','r','l'],ids:rows.map(d=>d.id),rowCls:rows.map(d=>editDoc===d.id?'hl':''),
+    headers:['Doctor','Speciality','Clinic','City','Phone','Medicals','Entries','Value prescribed','Target status','Incentive %','Incentive balance'],
+    aligns:['l','l','l','l','l','r','r','r','l','r','r'],ids:rows.map(d=>d.id),rowCls:rows.map(d=>editDoc===d.id?'hl':''),
     rows:rows.map(d=>[T(d.name),T(d.speciality||'\u2014'),T(d.clinic||'\u2014'),T(d.city||'\u2014'),T(d.phone||'\u2014'),
-      T(medicalsOf(d.id,f,t),'','r'),T(rxOf(d.id,f,t).length,'','r'),T(money(rxValue(d.id,f,t)),'','r'),T(statusOf(d.id))])};
+      T(medicalsOf(d.id,f,t),'','r'),T(rxOf(d.id,f,t).length,'','r'),T(money(rxValue(d.id,f,t)),'','r'),T(statusOf(d.id)),
+      T(commPctOn(d,today())+'%','','r'),T(money(incBalance(d.id)),cls(incBalance(d.id)),'r')])};
   const tv=rows.reduce((s,d)=>s+rxValue(d.id,f,t),0),tc=rows.reduce((s,d)=>s+rxOf(d.id,f,t).length,0);
-  D.foot=[T('Total, '+rows.length+' doctor'+(rows.length===1?'':'s')),T(''),T(''),T(''),T(''),T(''),T(tc,'','r'),T(money(tv),'','r'),T('')];
-  D.sums=[['Doctors',rows.length],['Entries',tc],['Value prescribed',money(tv)]];
+  const tb=rows.reduce((s,d)=>s+incBalance(d.id),0);
+  D.foot=[T('Total, '+rows.length+' doctor'+(rows.length===1?'':'s')),T(''),T(''),T(''),T(''),T(''),T(tc,'','r'),T(money(tv),'','r'),T(''),T(''),T(money(tb),cls(tb),'r')];
+  D.sums=[['Doctors',rows.length],['Entries',tc],['Value prescribed',money(tv)],['Incentive balance',money(tb)]];
   return D;
 }
 function statusOf(did){
@@ -875,7 +950,8 @@ function render(){
   $('ifCount').textContent=V.items.rows.length+' of '+S.items.length+' items';
   V.doctors=doctorsData();paint('tDocs',V.doctors,{act:'k',clickId:1,empty:'No doctors match these filters.'});
   $('kfCount').textContent=V.doctors.rows.length+' of '+S.doctors.length+' doctors';
-  docDetail();
+  $('kCommHist').innerHTML=editDoc?commHistLine(S.doctors.find(d=>d.id===editDoc)):'';
+  docDetail();docIncentive();
   V.rx=rxData();paint('tRx',V.rx,{act:'r',empty:'No prescriptions match these filters.'});
   $('rfCount').textContent=V.rx.rows.length+' of '+S.rx.length+' entries';
   V.rxlines=rxLinesData();
@@ -909,6 +985,49 @@ function docRxData(did){
   D.foot=[T('Total, '+rows.length+' entr'+(rows.length===1?'y':'ies')),T(''),T(''),T(''),T(''),T(''),T(money(rxValue(did,f,t)),'','r')]
     .concat(note?[T('')]:[]);
   return D;
+}
+
+/* short one-line rate history shown under the doctor form while editing */
+function commHistLine(d){
+  if(!d)return'';
+  const h=commHistSorted(d);
+  if(!h.length)return'No sales-incentive rate set yet — type one above and it is dated today.';
+  return 'Rate history: '+h.map(e=>(+e.pct||0)+'% from '+dmy(e.on)).join('  •  ');
+}
+function incHistData(d){
+  const h=commHistSorted(d).reverse();
+  return {headers:['Changed on','Rate','Recorded at'],aligns:['l','r','l'],ids:[],
+    rows:h.map(e=>[T(dmy(e.on)),T((+e.pct||0)+'%','','r'),T(e.ts?new Date(+e.ts).toLocaleString('en-IN'):'—')])};
+}
+function incLedgerData(did){
+  const rows=incOf(did).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(+b.ts||0)-(+a.ts||0));
+  const D={headers:['Date','Amount','Paid via','Reference','Comment','Screenshot','Recorded at'],
+    aligns:['l','r','l','l','l','l','l'],ids:rows.map(x=>x.id),rowCls:rows.map(x=>editInc===x.id?'hl':''),
+    rows:rows.map(x=>[T(dmy(x.date)),T(money(x.amount),'paid','r'),T(x.via||'—'),T(x.ref||'—'),T(x.note||'—'),
+      T((x.shot||x.shotData)?'View':'—'),T(x.ts?new Date(+x.ts).toLocaleString('en-IN'):'—')])};
+  const tot=rows.reduce((s,x)=>s+(+x.amount||0),0);
+  D.foot=[T('Total, '+rows.length+' payment'+(rows.length===1?'':'s')),T(money(tot),'paid','r'),T(''),T(''),T(''),T(''),T('')];
+  return D;
+}
+function docIncentive(){
+  const c=$('docIncentive');
+  if(!openDoc||!S.doctors.some(d=>d.id===openDoc)){c.style.display='none';return}
+  c.style.display='';
+  const d=doctor(openDoc),f=val('ddFrom'),t=val('ddTo');
+  $('docIncName').textContent='Sales incentive — '+d.name;
+  const eAll=incEarned(openDoc),pAll=incPaid(openDoc),bal=eAll-pAll;
+  $('docIncTot').innerHTML=fmtSum([
+    ['Rate now',commPctOn(d,today())+'%'],
+    ['Earned, date range',money(incEarned(openDoc,f,t))],
+    ['Paid, date range',money(incPaid(openDoc,f,t))],
+    ['Earned, all time',money(eAll)],
+    ['Paid, all time',money(pAll)],
+    ['Balance to pay',money(bal),cls(bal)]]);
+  if(!$('icRate').matches(':focus'))$('icRate').value=((d.commHist&&d.commHist.length)?commPctOn(d,today()):(d.commPct||0))||'';
+  if(editInc==null&&!$('ipDate').value)$('ipDate').value=today();
+  paint('tIncHist',incHistData(d),{empty:'No rate set yet.'});
+  paint('tInc',incLedgerData(openDoc),{act:'ip',clickId:1,empty:'No incentive payments recorded yet.'});
+  renderShotDir();
 }
 
 function detail(){
@@ -979,8 +1098,11 @@ $('tAllParties').onclick=e=>{if(e.target.closest('button'))return;const tr=e.tar
   openParty=tr.dataset.p;detail();$('detailCard').scrollIntoView({behavior:'smooth',block:'start'})};
 $('tDocs').onclick=e=>{if(e.target.closest('button'))return;const tr=e.target.closest('tr[data-p]');if(!tr)return;
   openDoc=tr.dataset.p;$('ddFrom').value=val('kfFrom');$('ddTo').value=val('kfTo');
-  docDetail();$('docDetail').scrollIntoView({behavior:'smooth',block:'start'})};
+  docDetail();docIncentive();$('docDetail').scrollIntoView({behavior:'smooth',block:'start'})};
 $('ddClear').onclick=()=>{$('ddFrom').value=$('ddTo').value='';render()};
+$('tInc').onclick=e=>{if(e.target.closest('button'))return;const tr=e.target.closest('tr[data-p]');if(!tr)return;
+  const rec=S.incentives.find(x=>x.id===tr.dataset.p);if(rec&&(rec.shot||rec.shotData))openShot(rec)};
+$('icDirPick').onclick=shotDirPick;
 
 /* ---------- edit / delete ---------- */
 function loadParty(id){
@@ -1031,23 +1153,29 @@ function loadDoc(id){
   const d=S.doctors.find(x=>x.id===id);if(!d)return;
   editDoc=id;$('kName').value=d.name;$('kSpec').value=d.speciality||'';$('kClinic').value=d.clinic||'';
   $('kCity').value=d.city||'';$('kPhone').value=d.phone||'';
+  $('kComm').value=(d.commHist&&d.commHist.length)?commPctOn(d,today()):(d.commPct!=null?d.commPct:'');
   $('docFormTitle').textContent='Editing '+d.name;$('kSave').textContent='Update doctor';
   $('kCancel').style.display='';$('docCard').classList.add('editing');
   tab('doctors');$('docCard').scrollIntoView({behavior:'smooth',block:'start'});render();
 }
 function clearDoc(){
-  editDoc=null;['kName','kSpec','kClinic','kCity','kPhone'].forEach(i=>$(i).value='');
+  editDoc=null;['kName','kSpec','kClinic','kCity','kPhone','kComm'].forEach(i=>$(i).value='');
+  $('kCommHist').innerHTML='';
   $('docFormTitle').textContent='New doctor';$('kSave').textContent='Save doctor';
   $('kCancel').style.display='none';$('docCard').classList.remove('editing');
 }
 function removeDoc(id){
   const d=S.doctors.find(x=>x.id===id);if(!d)return;
-  const nr=S.rx.filter(r=>r.doctorId===id).length,nt=S.targets.filter(t=>t.doctorId===id).length;
-  if(!confirm('Delete '+d.name+' along with '+nr+' prescription entr'+(nr===1?'y':'ies')+' and '+nt+' target'+(nt===1?'':'s')+'?\nThis cannot be undone.'))return;
+  const nr=S.rx.filter(r=>r.doctorId===id).length,nt=S.targets.filter(t=>t.doctorId===id).length,
+    np=S.incentives.filter(x=>x.doctorId===id).length;
+  if(!confirm('Delete '+d.name+' along with '+nr+' prescription entr'+(nr===1?'y':'ies')+', '+nt+' target'+(nt===1?'':'s')+
+    ' and '+np+' incentive payment'+(np===1?'':'s')+'?\nThis cannot be undone.'))return;
   S.rx=S.rx.filter(r=>r.doctorId!==id);S.targets=S.targets.filter(t=>t.doctorId!==id);
+  S.incentives=S.incentives.filter(x=>x.doctorId!==id);
   S.doctors=S.doctors.filter(x=>x.id!==id);
   if(openDoc===id)openDoc=null;
   if(editDoc===id)clearDoc();
+  if(editInc&&!S.incentives.some(x=>x.id===editInc))clearInc();
   if(editRx&&!S.rx.some(r=>r.id===editRx))clearRx();
   if(editTg&&!S.targets.some(t=>t.id===editTg))clearTg();
   save();
@@ -1148,6 +1276,8 @@ document.body.addEventListener('click',e=>{
   if(d.di)removeItem(d.di);
   if(d.ek)loadDoc(d.ek);
   if(d.dk)removeDoc(d.dk);
+  if(d.eip)loadInc(d.eip);
+  if(d.dip)removeInc(d.dip);
   if(d.er)loadRx(d.er);
   if(d.dr){const x=S.rx.find(v=>v.id===d.dr);
     if(confirm('Delete the entry of '+dmy(x?x.date:'')+' for '+(x?doctor(x.doctorId).name:'')+' \u2014 '+money(x?rxTot(x):0)+'?')){
@@ -1192,8 +1322,18 @@ $('kSave').onclick=()=>{
   if(S.doctors.some(d=>d.id!==editDoc&&d.name.toLowerCase()===name.toLowerCase()&&(d.city||'').toLowerCase()===val('kCity').toLowerCase()))
     return alert('That doctor already exists in this city.');
   const rec={name,speciality:val('kSpec'),clinic:val('kClinic'),city:val('kCity'),phone:val('kPhone')};
-  if(editDoc)Object.assign(S.doctors.find(x=>x.id===editDoc),rec);
-  else S.doctors.push(Object.assign({id:uid()},rec));
+  const pct=Math.max(0,+val('kComm')||0);
+  if(editDoc){
+    const d=S.doctors.find(x=>x.id===editDoc);Object.assign(d,rec);
+    if(!Array.isArray(d.commHist))d.commHist=[];
+    if(!d.commHist.length){if(pct>0)d.commHist.push({pct,on:today(),ts:nowTs()})}
+    else if(pct!==commPctOn(d,today()))d.commHist.push({pct,on:today(),ts:nowTs()});
+    d.commPct=pct;
+  }else{
+    const d=Object.assign({id:uid()},rec);
+    d.commPct=pct;d.commHist=pct>0?[{pct,on:today(),ts:nowTs()}]:[];
+    S.doctors.push(d);
+  }
   clearDoc();save();
 };
 $('rSave').onclick=()=>{
@@ -1220,6 +1360,70 @@ $('gSave').onclick=()=>{
   if(editTg){const t=S.targets.find(x=>x.id===editTg);const keep=t.rolls;Object.assign(t,rec);t.rolls=keep||{};}
   else S.targets.push(Object.assign({id:uid(),rolls:{}},rec));
   clearTg();save();tab('targets');
+};
+
+/* --- sales incentive: rate changes and the payment ledger --- */
+$('icRateSave').onclick=()=>{
+  if(!openDoc)return alert('Open a doctor first.');
+  const d=S.doctors.find(x=>x.id===openDoc);if(!d)return;
+  const pct=Math.max(0,+val('icRate')||0);
+  if(!Array.isArray(d.commHist))d.commHist=[];
+  if(d.commHist.length&&pct===commPctOn(d,today()))return alert('That is already the current rate.');
+  d.commHist.push({pct,on:today(),ts:nowTs()});
+  d.commPct=pct;
+  save();
+};
+$('ipShot').onchange=()=>{const f=$('ipShot').files[0];$('ipShotName').textContent=f?('Selected: '+f.name):''};
+$('ipCancel').onclick=clearInc;
+function clearInc(){
+  editInc=null;['ipAmt','ipRef','ipNote'].forEach(i=>$(i).value='');
+  $('ipShot').value='';$('ipShotName').textContent='';$('ipDate').value=today();$('ipVia').value='Cash';
+  $('ipSave').textContent='Save payment';$('ipCancel').style.display='none';
+  $('docIncentive').classList.remove('editing');
+}
+function loadInc(id){
+  const x=S.incentives.find(v=>v.id===id);if(!x)return;
+  editInc=id;$('ipAmt').value=x.amount;$('ipVia').value=x.via||'Cash';$('ipRef').value=x.ref||'';
+  $('ipNote').value=x.note||'';$('ipDate').value=x.date||today();$('ipShot').value='';
+  $('ipShotName').textContent=x.shot?('Attached: '+(x.shot.name||x.shot.path))
+    :x.shotData?('Attached: '+(x.shotName||'screenshot')):'';
+  $('ipSave').textContent='Update payment';$('ipCancel').style.display='';
+  $('docIncentive').classList.add('editing');
+  $('docIncentive').scrollIntoView({behavior:'smooth',block:'start'});
+  render();
+}
+function removeInc(id){
+  const x=S.incentives.find(v=>v.id===id);if(!x)return;
+  if(!confirm('Delete the '+money(x.amount)+' payment dated '+dmy(x.date)+'?\nA screenshot already saved to the folder is left in place.'))return;
+  S.incentives=S.incentives.filter(v=>v.id!==id);
+  if(editInc===id)clearInc();
+  save();
+}
+$('ipSave').onclick=async()=>{
+  if(!openDoc)return alert('Open a doctor first.');
+  const amount=+val('ipAmt');
+  if(!amount||amount<=0)return alert('Enter the amount paid.');
+  const rec={doctorId:openDoc,amount,via:val('ipVia'),ref:val('ipRef'),note:val('ipNote'),date:$('ipDate').value||today()};
+  const file=$('ipShot').files[0];
+  if(file){
+    try{
+      if(shotDir&&canDir){rec.shot=await saveShot(file,doctor(openDoc).name)}
+      else{rec.shotData=await fileToDataURL(file);rec.shotName=file.name}
+    }catch(err){
+      if(!confirm('The screenshot could not be saved ('+(err.message||err)+').\nSave the payment without it?'))return;
+    }
+  }
+  if(editInc){
+    const x=S.incentives.find(v=>v.id===editInc);
+    const keep={shot:x.shot,shotData:x.shotData,shotName:x.shotName,ts:x.ts};
+    Object.assign(x,rec);
+    if(!file){x.shot=keep.shot;x.shotData=keep.shotData;x.shotName=keep.shotName}
+    x.ts=keep.ts||nowTs();
+  }else{
+    rec.ts=nowTs();
+    S.incentives.push(Object.assign({id:uid()},rec));
+  }
+  clearInc();save();
 };
 
 /* ---------- Enter moves to the next field ---------- */
@@ -1368,6 +1572,13 @@ function doctorBlocks(){
   }
   blocks.push({caption:'Summary',headers:['Entries','Medicals covered','Value prescribed'],aligns:['r','r','r'],
     rows:[[T(rxOf(openDoc,f,t).length,'','r'),T(medicalsOf(openDoc,f,t),'','r'),T(money(rxValue(openDoc,f,t)),'','r')]]});
+  const eb=incEarned(openDoc)-incPaid(openDoc);
+  blocks.push({caption:'Sales incentive',headers:['Rate now','Earned (all time)','Paid (all time)','Balance to pay'],aligns:['r','r','r','r'],
+    rows:[[T(commPctOn(d,today())+'%','','r'),T(money(incEarned(openDoc)),'','r'),T(money(incPaid(openDoc)),'','r'),T(money(eb),'','r')]]});
+  if(S.incentives.some(x=>x.doctorId===openDoc)){
+    const L=incLedgerData(openDoc);
+    blocks.push({caption:'Incentive payments',headers:L.headers,aligns:L.aligns,rows:L.rows,foot:L.foot});
+  }
   return {name:d.name,city:d.city||'',phone:d.phone||'',blocks};
 }
 function exportIt(what,card){
@@ -1418,9 +1629,12 @@ function mergeData(d){
   (d.doctors||[]).forEach(k=>{
     const hit=S.doctors.find(x=>x.name.trim().toLowerCase()===String(k.name).trim().toLowerCase()
       &&String(x.city||'').trim().toLowerCase()===String(k.city||'').trim().toLowerCase());
-    if(hit){dmap[k.id]=hit.id;if(!hit.phone&&k.phone)hit.phone=k.phone;skip.k++;return}
+    if(hit){dmap[k.id]=hit.id;if(!hit.phone&&k.phone)hit.phone=k.phone;
+      if((!hit.commHist||!hit.commHist.length)&&Array.isArray(k.commHist)&&k.commHist.length){hit.commHist=k.commHist;hit.commPct=+k.commPct||0}
+      skip.k++;return}
     const id=S.doctors.some(x=>x.id===k.id)?uid():k.id;
-    dmap[k.id]=id;S.doctors.push({id,name:k.name,speciality:k.speciality||'',clinic:k.clinic||'',city:k.city||'',phone:k.phone||'',ts:+k.ts||nowTs()});add.k++;
+    dmap[k.id]=id;S.doctors.push({id,name:k.name,speciality:k.speciality||'',clinic:k.clinic||'',city:k.city||'',phone:k.phone||'',
+      commPct:+k.commPct||0,commHist:Array.isArray(k.commHist)?k.commHist:[],ts:+k.ts||nowTs()});add.k++;
   });
   (d.rx||[]).forEach(r=>{
     const did=dmap[r.doctorId]||r.doctorId,pid=map[r.partyId]||r.partyId;
@@ -1436,6 +1650,13 @@ function mergeData(d){
     S.targets.push({id:S.targets.some(x=>x.id===t.id)?uid():t.id,doctorId:did,amount:+t.amount||0,dur:+t.dur||1,
       unit:t.unit||'months',start:t.start,note:t.note||'',auto:!!t.auto,rolls:t.rolls||{},ts:+t.ts||nowTs()});add.g++;
   });
+  (d.incentives||[]).forEach(x=>{
+    const did=dmap[x.doctorId]||x.doctorId;
+    if(!S.doctors.some(y=>y.id===did))return;
+    if(x.id&&S.incentives.some(y=>y.id===x.id))return;
+    S.incentives.push({id:x.id||uid(),doctorId:did,amount:+x.amount||0,via:x.via||'',ref:x.ref||'',note:x.note||'',
+      date:x.date||'',shot:x.shot||null,shotData:x.shotData||'',shotName:x.shotName||'',ts:+x.ts||nowTs()});
+  });
   return {add,skip};
 }
 $('imp').onchange=async e=>{
@@ -1444,7 +1665,7 @@ $('imp').onchange=async e=>{
   if(replace&&(S.parties.length||S.items.length||S.doctors.length||S.rx.length||S.targets.length)){
     if(!confirm('Replace mode will erase the current '+S.parties.length+' medicals, '+S.items.length+' items, '+S.doctors.length+' doctors, '+S.rx.length+' prescriptions and '+S.targets.length+
       ' targets, then load the selected file(s). Continue?')){e.target.value='';return}
-    S.parties=[];S.bills=[];S.deposits=[];S.doctors=[];S.rx=[];S.targets=[];S.items=[];
+    S.parties=[];S.bills=[];S.deposits=[];S.doctors=[];S.rx=[];S.targets=[];S.items=[];S.incentives=[];
   }
   const rep=[];let ok=0;
   for(const f of files){
@@ -1490,7 +1711,7 @@ $('seed').onclick=()=>{
 $('wipe').onclick=()=>{
   if(!confirm('Erase all '+S.parties.length+' medicals, '+S.items.length+' items, '+S.doctors.length+' doctors, '+S.rx.length+' prescriptions and '+S.targets.length+' targets?\nDownload a backup first if you need it.'))return;
   if(!confirm('Last check. Erase everything?'))return;
-  S.parties=[];S.bills=[];S.deposits=[];S.doctors=[];S.rx=[];S.targets=[];S.items=[];
+  S.parties=[];S.bills=[];S.deposits=[];S.doctors=[];S.rx=[];S.targets=[];S.items=[];S.incentives=[];
   openParty=null;openDoc=null;clearParty();clearDoc();clearRx();clearTg();clearItem();
   save();$('dataHint').textContent='All data erased.';
 };

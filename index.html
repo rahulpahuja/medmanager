@@ -195,9 +195,11 @@
         <div class="f"><label>Clinic / hospital</label><input id="kClinic"></div>
         <div class="f"><label>City</label><input id="kCity"></div>
         <div class="f"><label>Phone</label><input id="kPhone"></div>
+        <div class="f"><label>Sales incentive (% of sales)</label><input id="kComm" class="num" inputmode="decimal" placeholder="e.g. 10"></div>
         <button class="act" id="kSave" data-icon="save">Save doctor</button>
         <button class="ghost" id="kCancel" data-icon="close" style="display:none">Cancel edit</button>
       </div>
+      <div class="hint" id="kCommHist"></div>
     </div>
     <div class="card">
       <h2 data-icon="stethoscope">Doctor directory</h2>
@@ -235,6 +237,40 @@
         <button class="ghost" data-x="doctor-pdf" data-icon="picture_as_pdf">Download doctor statement PDF</button>
         <button class="ghost" data-x="doctor-png" data-icon="image">Download doctor statement PNG</button>
       </div>
+    </div>
+
+    <div class="card" id="docIncentive" style="display:none">
+      <h2 id="docIncName" data-icon="payments"></h2>
+      <div class="tot" id="docIncTot"></div>
+
+      <h3 data-icon="percent">Sales incentive rate</h3>
+      <div class="row">
+        <div class="f"><label>Current rate (% of sales)</label><input id="icRate" class="num" inputmode="decimal"></div>
+        <button class="act" id="icRateSave" data-icon="save">Update rate</button>
+      </div>
+      <div class="scroll"><table id="tIncHist"></table></div>
+      <div class="hint">Every change to the rate is kept with the date it was made. The rate in force on a prescription&#8217;s date is the one used to work out incentive earned on it &#8212; and the first rate you set also covers everything prescribed before that date. Uses the From / To dates above for the range figures.</div>
+
+      <h3 data-icon="add_card">Record an incentive payment</h3>
+      <div class="row">
+        <div class="f"><label>Amount paid</label><input id="ipAmt" class="num" inputmode="decimal"></div>
+        <div class="f"><label>Paid via</label><select id="ipVia">
+          <option>Cash</option><option>UPI</option><option>Bank transfer</option><option>Cheque</option><option>Adjustment</option><option>Other</option>
+        </select></div>
+        <div class="f"><label>Reference no.</label><input id="ipRef" placeholder="UPI ref / cheque no."></div>
+        <div class="f"><label>Date</label><input type="date" id="ipDate"></div>
+        <div class="f" style="flex:1;min-width:200px"><label>Comment</label><input id="ipNote"></div>
+        <label class="act" data-icon="image" style="cursor:pointer;padding:9px 16px">Attach screenshot<input type="file" id="ipShot" accept="image/*" hidden></label>
+        <button class="act" id="ipSave" data-icon="save">Save payment</button>
+        <button class="ghost" id="ipCancel" data-icon="close" style="display:none">Cancel edit</button>
+      </div>
+      <div class="hint" id="ipShotName"></div>
+      <div class="bar noprint" style="margin-top:8px">
+        <button class="ghost" id="icDirPick" data-icon="folder">Choose screenshots folder</button>
+        <span class="hint" id="icDirName" style="margin-top:0"></span>
+      </div>
+      <div class="scroll"><table id="tInc"></table></div>
+      <div class="hint">Click a payment row to open its screenshot. Deleting a payment leaves any file already written to the folder untouched. The doctor statement download in the card above now includes an incentive summary and this ledger.</div>
     </div>
   </section>
 
