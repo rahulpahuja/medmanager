@@ -39,7 +39,7 @@ const store={
     return ok;
   }
 };
-const CFG={min:1,on:true,asked:false,name:'',theme:'',round:false};
+const CFG={min:1,on:true,asked:false,name:'',theme:'',round:false,tgMig:false};
 function applyTheme(){
   if(CFG.theme)document.documentElement.setAttribute('data-theme',CFG.theme);
   else document.documentElement.removeAttribute('data-theme');
@@ -524,6 +524,17 @@ async function load(){
   if(raw)try{Object.assign(S,JSON.parse(raw))}catch(e){}
   ['parties','bills','deposits','doctors','rx','targets','items','incentives'].forEach(k=>{if(!Array.isArray(S[k]))S[k]=[]});
   stampTs();
+  /* one-time: bind older prescriptions to whichever target was running for that
+     doctor on the entry date, so existing target tracking survives the upgrade */
+  if(!CFG.tgMig){
+    S.rx.forEach(r=>{
+      if(r.targetId!=null&&r.targetId!=='')return;
+      const c=S.targets.filter(t=>t.doctorId===r.doctorId&&!t.archivedAt&&(t.start||'')<=(r.date||''))
+        .sort((a,b)=>(b.start||'').localeCompare(a.start||'')||(+a.ts||0)-(+b.ts||0));
+      r.targetId=c.length?c[0].id:'';
+    });
+    CFG.tgMig=true;await saveCfg();
+  }
   mem=!(await store.set('bts',JSON.stringify(S)));
   await fsRestore();
   await shotDirRestore();
@@ -636,15 +647,22 @@ function addSpan(s,n,unit){
   return d.toISOString().slice(0,10);
 }
 const unitTxt=(n,u)=>n+' '+(u==='days'?'day':u==='years'?'year':'month')+(n==1?'':'s');
+/* a prescription now counts toward exactly one target, chosen on the entry */
+const rxOfTarget=(tid,did,f,t)=>S.rx.filter(r=>r.doctorId===did&&r.targetId===tid&&inRange(r.date,f,t));
+const rxValueForTarget=(tid,did,f,t)=>rxOfTarget(tid,did,f,t).reduce((s,r)=>s+rxTot(r),0);
+const activeTargetsOf=did=>S.targets.filter(t=>t.doctorId===did&&!t.archivedAt);
+const tgLabel=t=>(t.note?t.note+' — ':'')+money(t.amount)+' / '+unitTxt(t.dur,t.unit)+' from '+dmy(t.start);
+const tgShort=id=>{const t=S.targets.find(x=>x.id===id);return t?(t.note||money(t.amount)+' / '+unitTxt(t.dur,t.unit)):'—'};
 /* builds every period of a target, applying carried-in rollover */
 function periodsOf(t){
   const dur=Math.max(1,+t.dur||1),out=[];
-  const lastRx=S.rx.filter(r=>r.doctorId===t.doctorId).map(r=>r.date).sort().pop()||'';
-  const lim=[today(),lastRx].sort().pop();
+  const lastRx=rxOfTarget(t.id,t.doctorId).map(r=>r.date).sort().pop()||'';
+  const ceil=t.archivedAt?new Date(+t.archivedAt).toISOString().slice(0,10):today();
+  const lim=[ceil,lastRx].sort().pop();
   let s=t.start||today(),carry=0,i=0;
   while(i<240){
     const nx=addSpan(s,dur,t.unit),e=shiftDay(nx,-1);
-    const base=+t.amount||0,ach=rxValue(t.doctorId,s,e),eff=base+carry,gap=eff-ach;
+    const base=+t.amount||0,ach=rxValueForTarget(t.id,t.doctorId,s,e),eff=base+carry,gap=eff-ach;
     const rolled=!!(t.auto||(t.rolls&&t.rolls[i]));
     out.push({i,s,e,base,carry,eff,ach,gap,rolled,cur:today()>=s&&today()<=e});
     carry=rolled?gap:0;
@@ -813,12 +831,16 @@ function doctorsData(){
   return D;
 }
 function statusOf(did){
-  const ts=S.targets.filter(t=>t.doctorId===did);
-  if(!ts.length)return 'No target';
-  const p=periodsOf(ts[0]).slice(-1)[0];
-  if(!p)return 'No target';
-  const pct=p.eff>0?Math.round(p.ach/p.eff*100):0;
-  return (p.gap>0?'Short by '+money(p.gap):p.gap<0?'Ahead by '+money(-p.gap):'On target')+' \u00B7 P'+(p.i+1)+' \u00B7 '+pct+'%';
+  const ts=activeTargetsOf(did);
+  if(!ts.length)return S.targets.some(t=>t.doctorId===did)?'No active target':'No target';
+  if(ts.length===1){
+    const p=periodsOf(ts[0]).slice(-1)[0];
+    if(!p)return 'No target';
+    const pct=p.eff>0?Math.round(p.ach/p.eff*100):0;
+    return (p.gap>0?'Short by '+money(p.gap):p.gap<0?'Ahead by '+money(-p.gap):'On target')+' \u00B7 P'+(p.i+1)+' \u00B7 '+pct+'%';
+  }
+  let gap=0;ts.forEach(t=>{const p=periodsOf(t).slice(-1)[0];if(p)gap+=p.gap});
+  return ts.length+' targets \u00B7 '+(gap>0?money(gap)+' short':gap<0?money(-gap)+' ahead':'on target');
 }
 function rxData(){
   const q=val('rfQ').toLowerCase(),did=val('rfDoc'),pid=val('rfParty'),city=val('rfCity'),f=val('rfFrom'),t=val('rfTo'),srt=val('rfSort');
@@ -829,14 +851,14 @@ function rxData(){
     :srt==='doc'?doctor(a.doctorId).name.localeCompare(doctor(b.doctorId).name)
     :srt==='party'?party(a.partyId).name.localeCompare(party(b.partyId).name):(b.date||'').localeCompare(a.date||''));
   const D={title:'Prescriptions',sub:rangeTxt(f,t)+(did?' \u00B7 '+doctor(did).name:'')+(city?' \u00B7 City '+city:'')+(q?' \u00B7 Search "'+val('rfQ')+'"':''),
-    headers:['Date','Doctor','Medical','City','Medicines','Qty','Discount','Amount'],aligns:['l','l','l','l','l','r','r','r'],
+    headers:['Date','Doctor','Target','Medical','City','Medicines','Qty','Discount','Amount'],aligns:['l','l','l','l','l','l','r','r','r'],
     ids:rows.map(r=>r.id),rowCls:rows.map(r=>editRx===r.id?'hl':''),
-    rows:rows.map(r=>[T(dmy(r.date)),T(doctor(r.doctorId).name),T(party(r.partyId).name),T(party(r.partyId).city||'\u2014'),
+    rows:rows.map(r=>[T(dmy(r.date)),T(doctor(r.doctorId).name),T(tgShort(r.targetId)),T(party(r.partyId).name),T(party(r.partyId).city||'\u2014'),
       T((r.lines||[]).map(l=>l.name+(+l.qty?' \u00D7'+l.qty:'')).join(', ')||'\u2014'),T(rxQty(r)||'\u2014','','r'),
       T(+r.disc?r.disc+'% \u00B7 '+money(rxGross(r)*r.disc/100):'\u2014',+r.disc?'due':'','r'),T(money(rxTot(r)),'','r')])};
   const tv=rows.reduce((s,r)=>s+rxTot(r),0),tq=rows.reduce((s,r)=>s+rxQty(r),0),
     td=rows.reduce((s,r)=>s+(+r.disc?rxGross(r)*r.disc/100:0),0);
-  D.foot=[T('Total, '+rows.length+' entr'+(rows.length===1?'y':'ies')),T(''),T(''),T(''),T(''),T(tq,'','r'),T(td?money(td):'\u2014','','r'),T(money(tv),'','r')];
+  D.foot=[T('Total, '+rows.length+' entr'+(rows.length===1?'y':'ies')),T(''),T(''),T(''),T(''),T(''),T(tq,'','r'),T(td?money(td):'\u2014','','r'),T(money(tv),'','r')];
   D.sums=[['Entries',rows.length],['Medicine lines',rows.reduce((s,r)=>s+(r.lines||[]).length,0)],['Qty',tq],['Value',money(tv)]];
   D.raw=rows;
   return D;
@@ -854,7 +876,7 @@ function rxLinesData(){
 }
 function targetsData(){
   const did=val('gfDoc'),show=val('gfShow');
-  const list=S.targets.filter(t=>!did||t.doctorId===did)
+  const list=S.targets.filter(t=>(!did||t.doctorId===did)&&!t.archivedAt)
     .sort((a,b)=>doctor(a.doctorId).name.localeCompare(doctor(b.doctorId).name)||(a.start||'').localeCompare(b.start||''));
   const D={title:'Target tracking',sub:(did?doctor(did).name:'All doctors')+' \u00B7 '+$('gfShow').selectedOptions[0].text,
     headers:['Doctor','Label','Period','From','To','Base target','Carried in','Effective target','Achieved','Short / surplus','Rolled'],
@@ -884,6 +906,7 @@ function paintTargets(D){
       '<span class="pill">'+(t.auto?'Auto rollover on':'Auto rollover off')+'</span>'+
       '<span class="sp noprint">'+
         '<button class="ghost" data-tgauto="'+t.id+'">'+(t.auto?'Turn off auto rollover':'Roll over into next period, always')+'</button>'+
+        '<button class="ghost" data-tgarch="'+t.id+'">Archive</button>'+
         '<button class="ico e" data-etg="'+t.id+'" title="Edit">\u270E</button>'+
         '<button class="ico d" data-dtg="'+t.id+'" title="Delete">\u2715</button>'+
       '</span></div>';
@@ -911,6 +934,37 @@ function paintTargets(D){
   }).join('');
 }
 
+/* ---------- archive history ---------- */
+const archOpen=new Set();
+function renderArchiveHistory(){
+  const el=$('tgArchList');if(!el)return;
+  const arch=S.targets.filter(t=>t.archivedAt);
+  if(!arch.length){el.innerHTML='<div class="empty">No archived targets yet. Use the Archive button on any target above.</div>';return}
+  const byDoc={};
+  arch.forEach(t=>{(byDoc[t.doctorId]=byDoc[t.doctorId]||[]).push(t)});
+  el.innerHTML=Object.keys(byDoc).sort((a,b)=>doctor(a).name.localeCompare(doctor(b).name)).map(did=>{
+    const ts=byDoc[did].sort((a,b)=>(+b.archivedAt||0)-(+a.archivedAt||0)),open=archOpen.has(did);
+    const rows=ts.map(t=>{
+      const ps=periodsOf(t),tgt=ps.reduce((s,p)=>s+p.base,0),got=ps.reduce((s,p)=>s+p.ach,0);
+      const pct=tgt>0?Math.round(got/tgt*100):0,met=ps.filter(p=>p.gap<=0).length;
+      return '<tr><td>'+esc(t.note||'—')+'</td><td class="num">'+money(t.amount)+' / '+esc(unitTxt(t.dur,t.unit))+'</td>'+
+        '<td class="num">'+dmy(t.start)+'</td><td class="r num">'+met+' / '+ps.length+'</td>'+
+        '<td class="r num">'+money(tgt)+'</td><td class="r num paid">'+money(got)+'</td>'+
+        '<td class="r num '+(pct>=100?'paid':'due')+'">'+pct+'%</td>'+
+        '<td class="num">'+dmy(new Date(+t.archivedAt).toISOString().slice(0,10))+'</td>'+
+        '<td class="nowrap act-col noprint"><button class="ghost" data-tgrestore="'+t.id+'">Restore</button>'+
+        '<button class="ico d" data-tgdel="'+t.id+'" title="Delete for good">✕</button></td></tr>';
+    }).join('');
+    return '<div class="tcard"><div class="thead clk" data-archdoc="'+did+'"><b>'+esc(doctor(did).name)+'</b>'+
+      '<span class="meta">'+ts.length+' archived target'+(ts.length===1?'':'s')+'</span>'+
+      '<span class="pill">'+(open?'▾ Hide':'▸ Show')+'</span></div>'+
+      (open?'<div class="scroll"><table><thead><tr><th>Label</th><th>Amount / period</th><th>Start</th>'+
+        '<th class="r">Periods met</th><th class="r">Total target</th><th class="r">Total achieved</th><th class="r">%</th>'+
+        '<th>Archived on</th><th class="act-col noprint"></th></tr></thead><tbody>'+rows+'</tbody></table></div>':'')+
+      '</div>';
+  }).join('');
+}
+
 function fillSelects(){
   $('itemCat').innerHTML=itemCatalog().map(x=>'<option value="'+esc(x)+'"></option>').join('');
   const sorted=S.parties.slice().sort((a,b)=>a.name.localeCompare(b.name));
@@ -933,6 +987,15 @@ function fillSelects(){
   ['pfCity','rfCity','fCity'].forEach(id=>{const el=$(id),v=el.value;
     el.innerHTML=fPh(id,'All cities')+cities.map(c=>'<option>'+esc(c)+'</option>').join('');
     el.value=cities.indexOf(v)>-1?v:'';});
+  fillRxTargets();
+}
+/* the prescription form's target picker: the chosen doctor's active targets */
+function fillRxTargets(){
+  const el=$('rTarget');if(!el)return;
+  const did=val('rDoc'),v=el.value,ts=activeTargetsOf(did).sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+  el.innerHTML='<option value="">No target</option>'+ts.map(t=>'<option value="'+t.id+'">'+esc(tgLabel(t))+'</option>').join('');
+  el.disabled=!did;
+  el.value=ts.some(t=>t.id===v)?v:(!v&&!editRx&&ts.length===1?ts[0].id:'');
 }
 /* ledger filter dropdowns show "None selected"; the same selects elsewhere keep "All …" */
 const LEDGER_F=new Set(['fDoc','fParty','fCity','fItem']);
@@ -956,7 +1019,8 @@ function render(){
   $('rfCount').textContent=V.rx.rows.length+' of '+S.rx.length+' entries';
   V.rxlines=rxLinesData();
   V.targets=targetsData();paintTargets(V.targets);
-  $('gfCount').textContent=V.targets.cards.length+' of '+S.targets.length+' targets';
+  $('gfCount').textContent=V.targets.cards.length+' of '+S.targets.filter(t=>!t.archivedAt).length+' active targets';
+  if($('tgArchCard').style.display!=='none')renderArchiveHistory();
   $('dataTot').innerHTML=fmtSum([['Medicals',S.parties.length],['Items',S.items.length],['Doctors',S.doctors.length],
     ['Prescriptions',S.rx.length],['Targets',S.targets.length],['Value prescribed',money(S.rx.reduce((s,r)=>s+rxTot(r),0))]]);
 }
@@ -1094,6 +1158,23 @@ $('ifClear').onclick=()=>clearF(['ifQ','ifFrom','ifTo']);
 $('kfClear').onclick=()=>{openDoc=null;clearF(['kfQ','kfCity','kfFrom','kfTo'])};
 $('rfClear').onclick=()=>clearF(['rfQ','rfDoc','rfParty','rfCity','rfFrom','rfTo']);
 $('gfClear').onclick=()=>clearF(['gfDoc','gfShow']);
+$('tgArchBtn').onclick=()=>{
+  const c=$('tgArchCard'),show=c.style.display==='none';
+  c.style.display=show?'':'none';
+  $('tgArchBtn').classList.toggle('on',show);
+  if(show){renderArchiveHistory();c.scrollIntoView({behavior:'smooth',block:'start'})}
+};
+$('tgArchList').addEventListener('click',e=>{
+  const head=e.target.closest('[data-archdoc]');
+  if(head){const id=head.dataset.archdoc;archOpen.has(id)?archOpen.delete(id):archOpen.add(id);renderArchiveHistory();return}
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.tgrestore){const t=S.targets.find(v=>v.id===b.dataset.tgrestore);
+    if(t&&confirm('Restore this target to active tracking? New orders can count toward it again.')){
+      delete t.archivedAt;save();renderArchiveHistory();}}
+  if(b.dataset.tgdel){const t=S.targets.find(v=>v.id===b.dataset.tgdel);
+    if(t&&confirm('Delete this archived target for good?\nPrescriptions linked to it keep their history but stop counting toward any target.')){
+      S.targets=S.targets.filter(v=>v.id!==t.id);save();renderArchiveHistory();}}
+});
 $('tAllParties').onclick=e=>{if(e.target.closest('button'))return;const tr=e.target.closest('tr[data-p]');if(!tr)return;
   openParty=tr.dataset.p;detail();$('detailCard').scrollIntoView({behavior:'smooth',block:'start'})};
 $('tDocs').onclick=e=>{if(e.target.closest('button'))return;const tr=e.target.closest('tr[data-p]');if(!tr)return;
@@ -1233,10 +1314,12 @@ $('rxLines').addEventListener('click',e=>{
   lineTot();
 });
 $('rxAdd').onclick=()=>{addLine().querySelector('input').focus()};
+$('rDoc').addEventListener('change',fillRxTargets);
 function loadRx(id){
   const r=S.rx.find(x=>x.id===id);if(!r)return;
   editRx=id;$('rDoc').value=r.doctorId;$('rParty').value=r.partyId;$('rDate').value=r.date||today();$('rNote').value=r.note||'';
   $('rDisc').value=r.disc||'';$('rGst').value=r.gst||'';
+  fillRxTargets();$('rTarget').value=r.targetId||'';
   $('rxLines').innerHTML='';(r.lines&&r.lines.length?r.lines:[{}]).forEach(addLine);lineTot();
   $('rxFormTitle').textContent='Editing entry of '+dmy(r.date)+' \u00B7 '+doctor(r.doctorId).name;
   $('rSave').textContent='Update prescription';$('rCancel').style.display='';$('rxCard').classList.add('editing');
@@ -1244,6 +1327,7 @@ function loadRx(id){
 }
 function clearRx(){
   editRx=null;$('rNote').value='';$('rDisc').value='';$('rGst').value='';$('rxLines').innerHTML='';addLine();lineTot();
+  if($('rTarget')){$('rTarget').value='';fillRxTargets();}
   $('rxFormTitle').textContent='New prescription entry';$('rSave').textContent='Save prescription';
   $('rCancel').style.display='none';$('rxCard').classList.remove('editing');
 }
@@ -1286,6 +1370,10 @@ document.body.addEventListener('click',e=>{
   if(d.dtg){const x=S.targets.find(v=>v.id===d.dtg);
     if(confirm('Delete the '+money(x?x.amount:0)+' target for '+(x?doctor(x.doctorId).name:'')+'?')){
       S.targets=S.targets.filter(v=>v.id!==d.dtg);if(editTg===d.dtg)clearTg();save();}}
+  if(d.tgarch){const x=S.targets.find(v=>v.id===d.tgarch);
+    if(x&&confirm('Archive the '+(x.note?'"'+x.note+'" ':'')+money(x.amount)+' target for '+doctor(x.doctorId).name+'?\n'+
+      'It stops counting new orders and moves to Archive History. You can restore it any time.')){
+      x.archivedAt=Date.now();if(editTg===x.id)clearTg();save();}}
   if(d.tgauto){const t=S.targets.find(v=>v.id===d.tgauto);if(t){t.auto=!t.auto;save()}}
   if(d.roll){const [tid,pi]=d.roll.split(':'),t=S.targets.find(v=>v.id===tid);
     if(t){t.rolls=t.rolls||{};if(t.rolls[pi])delete t.rolls[pi];else t.rolls[pi]=1;save()}}
@@ -1344,7 +1432,9 @@ $('rSave').onclick=()=>{
   const bad=lines.find(l=>!l.name);
   if(bad)return alert('Every medicine line needs a name.');
   absorbItems(lines);
-  const rec={doctorId,partyId,date:$('rDate').value||today(),note:val('rNote'),
+  let targetId=$('rTarget').value||'';
+  if(targetId&&!activeTargetsOf(doctorId).some(t=>t.id===targetId))targetId='';
+  const rec={doctorId,partyId,targetId,date:$('rDate').value||today(),note:val('rNote'),
     disc:Math.max(0,+val('rDisc')||0),gst:Math.max(0,+val('rGst')||0),lines};
   if(editRx)Object.assign(S.rx.find(x=>x.id===editRx),rec);
   else S.rx.push(Object.assign({id:uid()},rec));
@@ -1561,14 +1651,14 @@ function partyBlocks(){
 function doctorBlocks(){
   const d=doctor(openDoc),f=val('kfFrom'),t=val('kfTo');
   const D=docRxData(openDoc);
-  const tg=S.targets.filter(x=>x.doctorId===openDoc);
+  const tg=S.targets.filter(x=>x.doctorId===openDoc&&!x.archivedAt);
   const blocks=[{caption:'Medicines prescribed',headers:D.headers,aligns:D.aligns,rows:D.rows,foot:D.foot}];
   if(tg.length){
     const rows=[];
-    tg.forEach(x=>periodsOf(x).forEach(p=>rows.push([T('P'+(p.i+1)),T(dmy(p.s)),T(dmy(p.e)),T(money(p.eff),'','r'),
+    tg.forEach(x=>periodsOf(x).forEach((p,pi)=>rows.push([T(pi?'':(x.note||money(x.amount))),T('P'+(p.i+1)),T(dmy(p.s)),T(dmy(p.e)),T(money(p.eff),'','r'),
       T(money(p.ach),'paid','r'),T(gapTxt(p.gap),cls(p.gap),'r'),T(p.rolled?'Yes':'No')])));
-    blocks.push({caption:'Targets',headers:['Period','From','To','Effective target','Achieved','Short / surplus','Rolled'],
-      aligns:['l','l','l','r','r','r','l'],rows});
+    blocks.push({caption:'Targets',headers:['Target','Period','From','To','Effective target','Achieved','Short / surplus','Rolled'],
+      aligns:['l','l','l','l','r','r','r','l'],rows});
   }
   blocks.push({caption:'Summary',headers:['Entries','Medicals covered','Value prescribed'],aligns:['r','r','r'],
     rows:[[T(rxOf(openDoc,f,t).length,'','r'),T(medicalsOf(openDoc,f,t),'','r'),T(money(rxValue(openDoc,f,t)),'','r')]]});
@@ -1672,15 +1762,16 @@ function mergeData(d){
     if(!S.doctors.some(x=>x.id===did)||!S.parties.some(x=>x.id===pid))return;
     const lines=(r.lines||[]).map(l=>({name:l.name||'',qty:+l.qty||0,rate:+l.rate||0,amount:+l.amount||0}));
     if(r.id&&S.rx.some(x=>x.id===r.id)){skip.r++;return}
-    S.rx.push({id:(r.id&&!S.rx.some(x=>x.id===r.id))?r.id:uid(),doctorId:did,partyId:pid,date:r.date,note:r.note||'',lines,ts:+r.ts||nowTs()});add.r++;
+    S.rx.push({id:(r.id&&!S.rx.some(x=>x.id===r.id))?r.id:uid(),doctorId:did,partyId:pid,targetId:r.targetId||'',date:r.date,note:r.note||'',lines,ts:+r.ts||nowTs()});add.r++;
   });
   (d.targets||[]).forEach(t=>{
     const did=dmap[t.doctorId]||t.doctorId;
     if(!S.doctors.some(x=>x.id===did))return;
     if(S.targets.some(x=>x.id===t.id||(x.doctorId===did&&x.start===t.start&&+x.amount===+t.amount&&+x.dur===+t.dur&&x.unit===t.unit))){skip.g++;return}
     S.targets.push({id:S.targets.some(x=>x.id===t.id)?uid():t.id,doctorId:did,amount:+t.amount||0,dur:+t.dur||1,
-      unit:t.unit||'months',start:t.start,note:t.note||'',auto:!!t.auto,rolls:t.rolls||{},ts:+t.ts||nowTs()});add.g++;
+      unit:t.unit||'months',start:t.start,note:t.note||'',auto:!!t.auto,archivedAt:+t.archivedAt||0,rolls:t.rolls||{},ts:+t.ts||nowTs()});add.g++;
   });
+  S.rx.forEach(r=>{if(r.targetId&&!S.targets.some(t=>t.id===r.targetId))r.targetId='';});
   (d.incentives||[]).forEach(x=>{
     const did=dmap[x.doctorId]||x.doctorId;
     if(!S.doctors.some(y=>y.id===did))return;
@@ -1732,11 +1823,13 @@ $('seed').onclick=()=>{
   const d1=uid(),d2=uid();
   S.doctors.push({id:d1,name:'Dr. R. Sharma',speciality:'Physician',clinic:'Sharma Clinic',city:'Indore',phone:'9822001100'},
     {id:d2,name:'Dr. A. Verma',speciality:'Paediatrics',clinic:'City Hospital',city:'Bhopal',phone:'9822004400'});
-  S.rx.push({id:uid(),doctorId:d1,partyId:a,date:'2026-07-14',note:'',lines:[{name:'Amoxycillin 500',qty:100,rate:9,amount:900},{name:'Pantoprazole 40',qty:200,rate:6,amount:1200}]},
-    {id:uid(),doctorId:d1,partyId:c,date:'2026-08-06',note:'monthly',lines:[{name:'Amoxycillin 500',qty:150,rate:9,amount:1350}]},
-    {id:uid(),doctorId:d2,partyId:b,date:'2026-08-18',note:'',lines:[{name:'Paracetamol syrup',qty:80,rate:42,amount:3360}]});
-  S.targets.push({id:uid(),doctorId:d1,amount:2000,dur:1,unit:'months',start:'2026-07-01',note:'Monsoon scheme',auto:true,rolls:{}},
-    {id:uid(),doctorId:d2,amount:5000,dur:15,unit:'days',start:'2026-08-01',note:'',auto:false,rolls:{}});
+  const g1=uid(),g2=uid(),g3=uid();
+  S.rx.push({id:uid(),doctorId:d1,partyId:a,targetId:g1,date:'2026-07-14',note:'',lines:[{name:'Amoxycillin 500',qty:100,rate:9,amount:900},{name:'Pantoprazole 40',qty:200,rate:6,amount:1200}]},
+    {id:uid(),doctorId:d1,partyId:c,targetId:g1,date:'2026-08-06',note:'monthly',lines:[{name:'Amoxycillin 500',qty:150,rate:9,amount:1350}]},
+    {id:uid(),doctorId:d2,partyId:b,targetId:g3,date:'2026-08-18',note:'',lines:[{name:'Paracetamol syrup',qty:80,rate:42,amount:3360}]});
+  S.targets.push({id:g1,doctorId:d1,amount:2000,dur:1,unit:'months',start:'2026-07-01',note:'Monsoon scheme',auto:true,rolls:{}},
+    {id:g2,doctorId:d1,amount:8000,dur:1,unit:'months',start:'2026-06-01',note:'Q2 push (achieved)',auto:false,rolls:{},archivedAt:Date.now()-86400000*20},
+    {id:g3,doctorId:d2,amount:5000,dur:15,unit:'days',start:'2026-08-01',note:'',auto:false,rolls:{}});
   save();$('dataHint').textContent='Sample data loaded.';
 };
 $('wipe').onclick=()=>{

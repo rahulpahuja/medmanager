@@ -118,6 +118,9 @@ tr.hl{background:var(--hl)}
 .thead b{font-size:15px}
 .thead .meta{font-size:12px;color:var(--ink2)}
 .thead .sp{margin-left:auto;display:flex;gap:6px}
+.thead.clk{cursor:pointer}
+.thead.clk:hover{background:var(--line)}
+.thead.clk .pill{margin-left:auto}
 .tcard .scroll{padding:0 12px 10px}
 .chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2)}
 .chk input{min-width:0;width:16px;height:16px}
